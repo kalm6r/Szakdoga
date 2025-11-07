@@ -272,9 +272,13 @@ public class CategoryPanel extends JPanel {
                     for (CardVM vm : vms) {      // <-- NEM 'products'-ból dolgozunk, hanem a vms-ből
                         ProductCard card = new ProductCard();
                         card.setData(vm.name, vm.middle, vm.price, vm.image);  // <-- itt már van kép
-                        card.setFavoriteButtonVisible(userId != null);
-                        card.setFavorite(vm.favorite);
-                        if (userId != null) {
+                        boolean loggedIn = userId != null;
+                        card.setFavoriteButtonVisible(true);
+                        card.setFavoriteButtonEnabled(loggedIn);
+                        if (!loggedIn) {
+                            card.setFavorite(false);
+                        } else {
+                            card.setFavorite(vm.favorite);
                             card.addFavoriteToggleListener(evt -> {
                                 boolean selected = card.isFavoriteSelected();
                                 try {
