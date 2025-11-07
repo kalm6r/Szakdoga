@@ -1,0 +1,412 @@
+package ui;
+
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import javax.swing.border.LineBorder;
+import java.awt.Color;
+import java.awt.GridLayout;
+
+import javax.swing.JButton;
+import javax.swing.JTextField;
+import javax.swing.JLabel;
+import java.awt.Font;
+
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+
+import javax.swing.SwingWorker;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.JOptionPane;
+
+import java.text.NumberFormat;
+import java.util.Locale;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import java.time.LocalDate;
+
+import model.Product;
+import model.Supply;
+import service.InventoryService;
+
+import util.UrlImageLoader;
+import java.awt.Image;
+
+public class PurchaseDatePanel extends JPanel {
+
+	private static final class CardVM {
+	    final String name, middle, price; 
+	    final Image image;
+	    CardVM(String n, String m, String p, Image i) { name=n; middle=m; price=p; image=i; }
+	}
+	
+    private static final long serialVersionUID = 1L;
+    private JTextField textField;
+
+    // --- Kártyák + görgetés ---
+    private JPanel cards;
+    private JScrollPane cardsScroll;
+
+    // --- Bal oldali dátumlista (év → lenyíló hónapok) ---
+    private JPanel dateList;         // panel_1-en belül, Y irányú lista
+    private JButton lastSelectedBtn = null;
+
+    private Integer activeYear = null;      // null = Összes
+    private Integer activeMonth = null;     // null = csak év (vagy Összes), 1..12 = hónap
+    private final Set<Integer> expandedYears = new HashSet<>();
+
+    // Melyik évhez milyen hónapok érhetők el (az adatok alapján)
+    private final Map<Integer, Set<Integer>> monthsByYear = new HashMap<>();
+
+    private final InventoryService inv = new InventoryService();
+
+    public PurchaseDatePanel() {
+        setPreferredSize(new Dimension(896, 504));
+        setLayout(null);
+
+        // --- Felső sor (kereső + cím) ---
+        JPanel panel_3 = new JPanel();
+        panel_3.setBounds(61, 43, 825, 38);
+        add(panel_3);
+        panel_3.setLayout(null);
+
+        JButton btnSearch = new JButton("");
+        btnSearch.setContentAreaFilled(false);
+        btnSearch.setBorderPainted(false);
+        btnSearch.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\search.png"));
+        btnSearch.setBounds(788, 7, 30, 30);
+        panel_3.add(btnSearch);
+        panel_3.setComponentZOrder(btnSearch, 0);
+
+        textField = new JTextField();
+        textField.setBounds(472, 11, 315, 27);
+        panel_3.add(textField);
+        textField.setColumns(10);
+
+        JLabel lblNewLabel = new JLabel("Vásárlás dátuma szerint");
+        lblNewLabel.setBounds(0, 0, 300, 36);
+        panel_3.add(lblNewLabel);
+        lblNewLabel.setFont(new Font("Segoe UI", Font.PLAIN, 23));
+
+        // --- Bal oldali doboz (év/hónap lista) ---
+        JPanel panel_1 = new JPanel();
+        panel_1.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
+        panel_1.setBackground(Color.WHITE);
+        panel_1.setBounds(77, 110, 200, 350);
+        panel_1.setLayout(new BorderLayout());
+        add(panel_1);
+
+        dateList = new JPanel();
+        dateList.setBackground(Color.WHITE);
+        dateList.setLayout(new BoxLayout(dateList, BoxLayout.Y_AXIS));
+        JScrollPane dateScroll = new JScrollPane(dateList,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        dateScroll.setBorder(null);
+        panel_1.add(dateScroll, BorderLayout.CENTER);
+
+        // --- Kártyák + görgetés (3 oszlop) ---
+        cards = new JPanel(new GridLayout(0, 3, 16, 16));
+        cards.setBorder(new EmptyBorder(16, 16, 16, 16));
+
+        cardsScroll = new JScrollPane(
+                cards,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        );
+        cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
+        cardsScroll.setBounds(310, 110, 576, 350);
+        cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        add(cardsScroll);
+
+        // Középre igazító belső padding (scrollbar kompenzáció) — változatlan logika
+        Runnable recalcPadding = () -> {
+            int viewportW = cardsScroll.getViewport().getWidth();
+            int sbw = cardsScroll.getVerticalScrollBar().getWidth();
+            if (sbw <= 0) sbw = cardsScroll.getVerticalScrollBar().getPreferredSize().width;
+            final int COLS = 3, GAP = 16, CARD_W = 170, MIN_PAD = 16;
+            int used = COLS * CARD_W + (COLS - 1) * GAP;
+            int padLeft = Math.max(MIN_PAD, (viewportW - used) / 2);
+            int padRight = padLeft + sbw + GAP;
+            cards.setBorder(new EmptyBorder(16, padLeft, 16, padRight));
+            cards.revalidate();
+            cards.repaint();
+        };
+        recalcPadding.run();
+        cardsScroll.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) { recalcPadding.run(); }
+        });
+        cardsScroll.getVerticalScrollBar().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent e) { recalcPadding.run(); }
+            @Override public void componentHidden(java.awt.event.ComponentEvent e) { recalcPadding.run(); }
+        });
+
+        // Keresés: név szerinti szűrés
+        btnSearch.addActionListener(e -> loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth));
+        textField.addActionListener(e -> loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth));
+
+        // Bal oldali év/hónap lista feltöltése és induló betöltés
+        populateDateList();
+        loadCardsByPurchaseDateAsync(null, null, null); // Összes
+    }
+
+    /** Feltölti a bal oldali év → hónap listát.
+     *  2025-től lefele listázunk a legkorábbi évig, ami az adatokban szerepel.
+     *  A hónapok csak azok, amelyek ténylegesen előfordulnak (a legutóbbi Supply alapján).
+     */
+    private void populateDateList() {
+        dateList.removeAll();
+        monthsByYear.clear();
+
+        // A legutóbbi Supply minden termékhez, hogy a hónap-listát releváns adatok alapján képezzük
+        Map<Integer, Supply> latestSupply = inv.listAllSupply().stream()
+                .collect(Collectors.toMap(
+                        Supply::getProductId,
+                        Function.identity(),
+                        (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
+                ));
+
+        // Év → hónapok halmaza
+        for (Supply s : latestSupply.values()) {
+            if (s == null || s.getBought() == null) continue;
+            LocalDate d = s.getBought();
+            monthsByYear.computeIfAbsent(d.getYear(), y -> new HashSet<>()).add(d.getMonthValue());
+        }
+
+        // Kezdő év: 2025, utolsó év: a legkorábbi előforduló (ha nincs, akkor 2025)
+        int startYear = 2025;
+        int minYear = monthsByYear.keySet().stream().min(Integer::compareTo).orElse(2025);
+
+        // "Összes" gomb
+        addDateButton("Összes", null, null);
+
+        // 2025 → minYear (lefelé)
+        for (int y = startYear; y >= minYear; y--) {
+            addYearWithOptionalMonths(y);
+        }
+
+        dateList.revalidate();
+        dateList.repaint();
+    }
+
+    private void addYearWithOptionalMonths(int year) {
+        // Év gomb: kattintás = kiválaszt + lenyit/összecsuk
+        JButton yearBtn = makeFilterButton(yearLabel(year), 0);
+        yearBtn.addActionListener(ev -> {
+            // kiválasztás évre (hónap null)
+            activeYear = year;
+            activeMonth = null;
+            toggleExpand(year);
+            highlightSelected(yearBtn);
+            // újratölt
+            loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+            // újraépítjük a listát, hogy a lenyitás/összecsukás látszódjon
+            rebuildDateListUI();
+        });
+        dateList.add(yearBtn);
+
+        // Ha épp nyitva kell lennie, megjelenítjük a hónapokat (csak a létezőket)
+        if (expandedYears.contains(year)) {
+            Set<Integer> months = monthsByYear.getOrDefault(year, Set.of());
+            List<Integer> sorted = new ArrayList<>(months);
+            sorted.sort(Comparator.naturalOrder());
+
+            for (Integer m : sorted) {
+                JButton monthBtn = makeFilterButton("  - " + monthLabel(m), 24);
+                monthBtn.addActionListener(ev -> {
+                    activeYear = year;
+                    activeMonth = m;
+                    highlightSelected(monthBtn);
+                    loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+                });
+                dateList.add(monthBtn);
+            }
+        }
+    }
+
+    private void rebuildDateListUI() {
+        dateList.removeAll();
+        addDateButton("Összes", null, null);
+
+        int startYear = 2025;
+        int minYear = monthsByYear.keySet().stream().min(Integer::compareTo).orElse(2025);
+        for (int y = startYear; y >= minYear; y--) {
+            addYearWithOptionalMonths(y);
+        }
+        dateList.revalidate();
+        dateList.repaint();
+    }
+
+    private void toggleExpand(int year) {
+        if (expandedYears.contains(year)) expandedYears.remove(year);
+        else expandedYears.add(year);
+    }
+
+    private void addDateButton(String text, Integer year, Integer month) {
+        JButton b = makeFilterButton(text, 0);
+        b.addActionListener(ev -> {
+            activeYear = year;
+            activeMonth = month;
+            highlightSelected(b);
+            loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+        });
+        if (year == null && month == null && lastSelectedBtn == null) highlightSelected(b);
+        dateList.add(b);
+    }
+
+    private JButton makeFilterButton(String text, int leftPadding) {
+        JButton b = new JButton(text);
+        b.setHorizontalAlignment(SwingConstants.LEFT);
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setBorder(new EmptyBorder(8, 12 + leftPadding, 8, 12));
+        b.setAlignmentX(0f);
+        return b;
+    }
+
+    private String yearLabel(int y) {
+        // nyitott/összecsukott jelzés az expandedYears alapján
+        String prefix = expandedYears.contains(y) ? "▼ " : "► ";
+        return prefix + y;
+    }
+    
+    // Magyar hónapnevek (1..12);
+    private static final String[] HUN_MONTHS = {
+        "", "Január", "Február", "Március", "Április", "Május", "Június",
+        "Július", "Augusztus", "Szeptember", "Október", "November", "December"
+    };
+
+
+    private String monthLabel(int m) {
+        if (m >= 1 && m <= 12) return HUN_MONTHS[m];
+        // Fallback, ha valamiért nincs 1..12 között
+        return String.valueOf(m);
+    }
+
+
+    private void highlightSelected(JButton btn) {
+        if (lastSelectedBtn != null) {
+            lastSelectedBtn.setOpaque(false);
+            lastSelectedBtn.setBackground(null);
+            lastSelectedBtn.setForeground(Color.BLACK);
+        }
+        lastSelectedBtn = btn;
+        btn.setOpaque(true);
+        btn.setBackground(new Color(230,230,230));
+        btn.setForeground(Color.BLACK);
+    }
+
+    // ------------------ Kártyák betöltése háttérszálon (év/hónap szűréssel) ------------------
+    private void loadCardsByPurchaseDateAsync(String search, Integer yearFilter, Integer monthFilter) {
+        new SwingWorker<java.util.List<CardVM>, Void>() {
+            @Override protected java.util.List<CardVM> doInBackground() {
+                // 1) Összes termék
+                java.util.List<Product> products = inv.listAllProducts();
+
+                // 2) Legutóbbi supply termékenként (árhoz és dátumszűréshez)
+                java.util.Map<Integer, Supply> latestSupplyByProductId = inv.listAllSupply().stream()
+                    .collect(Collectors.toMap(
+                        Supply::getProductId,
+                        Function.identity(),
+                        (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
+                    ));
+
+                // 3) Dátum szűrés a legutóbbi Supply alapján
+                if (yearFilter != null) {
+                    products = products.stream()
+                        .filter(p -> {
+                            Supply s = latestSupplyByProductId.get(p.getId());
+                            if (s == null || s.getBought() == null) return false;
+                            LocalDate d = s.getBought();
+                            if (d.getYear() != yearFilter) return false;
+                            if (monthFilter != null && d.getMonthValue() != monthFilter) return false;
+                            return true;
+                        })
+                        .collect(Collectors.toList());
+                }
+
+                // 4) Név szerinti szűrés
+                if (search != null && !search.isBlank()) {
+                    final String q = search.toLowerCase();
+                    products = products.stream()
+                        .filter(p -> p.getName() != null && p.getName().toLowerCase().contains(q))
+                        .collect(Collectors.toList());
+                }
+
+                // 5) ViewModel összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
+                java.util.List<CardVM> vms = products.stream().map(p -> {
+                    // középső sor: alkategória -> kategória
+                    String middle = "";
+                    if (p.getCategory() != null) {
+                        if (p.getCategory().getSubcategory() != null && p.getCategory().getSubcategory().getName() != null) {
+                            middle = p.getCategory().getSubcategory().getName();
+                        } else if (p.getCategory().getName() != null) {
+                            middle = p.getCategory().getName();
+                        }
+                    }
+
+                    // ár a legutóbbi supply-ból
+                    Supply s = latestSupplyByProductId.get(p.getId());
+                    String priceText = (s != null) ? formatFt(s.getSellPrice()) : "";
+
+                    double scale = 1.0;
+                    java.awt.GraphicsConfiguration gc = PurchaseDatePanel.this.getGraphicsConfiguration();
+                    if (gc != null) scale = gc.getDefaultTransform().getScaleX();
+                    else scale = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                            .getDefaultScreenDevice().getDefaultConfiguration().getDefaultTransform().getScaleX();
+                    int pxW = (int)Math.round(ProductCard.IMG_W * scale);
+                    int pxH = (int)Math.round(ProductCard.IMG_H * scale);
+                    
+                    Image hi =  UrlImageLoader.get(p.getImageUrl(), pxW, pxH);
+                    Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
+
+
+                    return new CardVM(p.getName(), middle, priceText, img);
+                }).collect(Collectors.toList());
+
+                return vms;
+            }
+
+            @Override protected void done() {
+                try {
+                    java.util.List<CardVM> vms = get();
+                    cards.removeAll();
+                    for (CardVM vm : vms) {
+                        ProductCard card = new ProductCard();
+                        // <<< már NEM null a kép >>>
+                        card.setData(vm.name, vm.middle, vm.price, vm.image);
+                        cards.add(card);
+                    }
+                    cards.revalidate();
+                    cards.repaint();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PurchaseDatePanel.this,
+                            "Hiba a termékek betöltése közben:\n" + ex.getMessage(),
+                            "Hiba", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
+    private String formatFt(int value) {
+        NumberFormat nf = NumberFormat.getIntegerInstance(new Locale("hu", "HU"));
+        nf.setGroupingUsed(true);
+        return nf.format(value) + " Ft";
+    }
+}
