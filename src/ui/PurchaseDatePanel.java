@@ -452,6 +452,36 @@ public class PurchaseDatePanel extends JPanel {
         card.addFavoriteToggleListener(evt -> {
             boolean selected = card.isFavoriteSelected();
             try {
+                boolean ok = selected
+                        ? inv.addFavoriteProduct(userId, vm.productId)
+                        : inv.removeFavoriteProduct(userId, vm.productId);
+                if (!ok) {
+                    throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                }
+                notifyFavoritesChanged();
+            } catch (RuntimeException ex) {
+                card.setFavorite(!selected);
+                JOptionPane.showMessageDialog(PurchaseDatePanel.this,
+                        "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                        "Hiba", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
+
+    public void setFavoritesChangedCallback(Runnable favoritesChangedCallback) {
+        this.favoritesChangedCallback = favoritesChangedCallback;
+    }
+
+    private void notifyFavoritesChanged() {
+        if (favoritesChangedCallback != null) {
+            favoritesChangedCallback.run();
+        }
+
+        card.setFavorite(vm.favorite);
+
+        card.addFavoriteToggleListener(evt -> {
+            boolean selected = card.isFavoriteSelected();
+            try {
                 if (favoritesManager != null) {
                     favoritesManager.setFavorite(vm.productId, selected);
                 } else {

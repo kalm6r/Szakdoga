@@ -297,6 +297,31 @@ public class ManufacturerPanel extends JPanel {
         card.addFavoriteToggleListener(evt -> {
             boolean selected = card.isFavoriteSelected();
             try {
+                boolean ok = selected
+                        ? inv.addFavoriteProduct(userId, vm.productId)
+                        : inv.removeFavoriteProduct(userId, vm.productId);
+                if (!ok) {
+                    throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                }
+                notifyFavoritesChanged();
+            } catch (RuntimeException ex) {
+                card.setFavorite(!selected);
+                JOptionPane.showMessageDialog(ManufacturerPanel.this,
+                        "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                        "Hiba", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
+
+    public void refreshFavorites() {
+        loadCardsByManufacturerAsync(textField.getText(), activeManufacturerKey);
+    }
+
+        card.setFavorite(vm.favorite);
+
+        card.addFavoriteToggleListener(evt -> {
+            boolean selected = card.isFavoriteSelected();
+            try {
                 if (favoritesManager != null) {
                     favoritesManager.setFavorite(vm.productId, selected);
                 } else {
