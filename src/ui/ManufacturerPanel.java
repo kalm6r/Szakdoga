@@ -259,27 +259,7 @@ public class ManufacturerPanel extends JPanel {
                         ProductCard card = new ProductCard();
                         // <<< MÁR NEM null a kép >>>
                         card.setData(vm.name, vm.middle, vm.price, vm.image);
-                        card.setFavoriteButtonVisible(userId != null);
-                        card.setFavorite(vm.favorite);
-                        if (userId != null) {
-                            card.addFavoriteToggleListener(evt -> {
-                                boolean selected = card.isFavoriteSelected();
-                                try {
-                                    boolean ok = selected
-                                            ? inv.addFavoriteProduct(userId, vm.productId)
-                                            : inv.removeFavoriteProduct(userId, vm.productId);
-                                    if (!ok) {
-                                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
-                                    }
-                                    notifyFavoritesChanged();
-                                } catch (RuntimeException ex) {
-                                    card.setFavorite(!selected);
-                                    JOptionPane.showMessageDialog(ManufacturerPanel.this,
-                                            "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
-                                            "Hiba", JOptionPane.ERROR_MESSAGE);
-                                }
-                            });
-                        }
+                        configureFavoriteToggle(card, vm);
                         cards.add(card);
                     }
                     cards.revalidate();
@@ -296,6 +276,36 @@ public class ManufacturerPanel extends JPanel {
     // kényelmi overload (kereső gomb/Enter)
     private void loadCardsByManufacturerAsync(String search) {
         loadCardsByManufacturerAsync(search, activeManufacturerKey);
+    }
+
+    private void configureFavoriteToggle(ProductCard card, CardVM vm) {
+        boolean loggedIn = userId != null;
+        card.setFavoriteButtonVisible(true);
+        card.setFavoriteButtonEnabled(loggedIn);
+        if (!loggedIn) {
+            card.setFavorite(false);
+            return;
+        }
+
+        card.setFavorite(vm.favorite);
+
+        card.addFavoriteToggleListener(evt -> {
+            boolean selected = card.isFavoriteSelected();
+            try {
+                boolean ok = selected
+                        ? inv.addFavoriteProduct(userId, vm.productId)
+                        : inv.removeFavoriteProduct(userId, vm.productId);
+                if (!ok) {
+                    throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                }
+                notifyFavoritesChanged();
+            } catch (RuntimeException ex) {
+                card.setFavorite(!selected);
+                JOptionPane.showMessageDialog(ManufacturerPanel.this,
+                        "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                        "Hiba", JOptionPane.ERROR_MESSAGE);
+            }
+        });
     }
 
     public void refreshFavorites() {
