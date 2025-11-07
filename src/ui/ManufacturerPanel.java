@@ -27,6 +27,7 @@ import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,9 +45,18 @@ public class ManufacturerPanel extends JPanel {
     private JTextField textField;
     
     private static final class CardVM {
-        final String name, middle, price; 
+        final int productId;
+        final String name, middle, price;
         final Image image;
-        CardVM(String n, String m, String p, Image i) { name=n; middle=m; price=p; image=i; }
+        final boolean favorite;
+        CardVM(int id, String n, String m, String p, Image i, boolean fav) {
+            productId = id;
+            name = n;
+            middle = m;
+            price = p;
+            image = i;
+            favorite = fav;
+        }
     }
 
     // --- HOZZÁADOTT mezők a kártyákhoz/DB-hez ---
@@ -59,11 +69,23 @@ public class ManufacturerPanel extends JPanel {
     private JButton lastSelectedBtn = null;
 
     private final InventoryService inv = new InventoryService();
+    private final Integer userId;
+    private Runnable favoritesChangedCallback;
 
     /**
      * Create the panel.
      */
     public ManufacturerPanel() {
+        this(null, null);
+    }
+
+    public ManufacturerPanel(Integer userId) {
+        this(userId, null);
+    }
+
+    public ManufacturerPanel(Integer userId, Runnable favoritesChangedCallback) {
+        this.userId = userId;
+        this.favoritesChangedCallback = favoritesChangedCallback;
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
 
@@ -195,6 +217,8 @@ public class ManufacturerPanel extends JPanel {
                                 (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
                         ));
 
+                Set<Integer> favoriteIds = userId != null ? inv.listFavoriteProductIds(userId) : Set.of();
+
                 // 5) VM-ek összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
                     String middle = "";
@@ -220,7 +244,8 @@ public class ManufacturerPanel extends JPanel {
                     Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
 
 
-                    return new CardVM(p.getName(), middle, priceText, img);
+                    boolean favorite = favoriteIds.contains(p.getId());
+                    return new CardVM(p.getId(), p.getName(), middle, priceText, img, favorite);
                 }).collect(Collectors.toList());
 
                 return vms;
@@ -234,6 +259,27 @@ public class ManufacturerPanel extends JPanel {
                         ProductCard card = new ProductCard();
                         // <<< MÁR NEM null a kép >>>
                         card.setData(vm.name, vm.middle, vm.price, vm.image);
+                        card.setFavoriteButtonVisible(userId != null);
+                        card.setFavorite(vm.favorite);
+                        if (userId != null) {
+                            card.addFavoriteToggleListener(evt -> {
+                                boolean selected = card.isFavoriteSelected();
+                                try {
+                                    boolean ok = selected
+                                            ? inv.addFavoriteProduct(userId, vm.productId)
+                                            : inv.removeFavoriteProduct(userId, vm.productId);
+                                    if (!ok) {
+                                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                                    }
+                                    notifyFavoritesChanged();
+                                } catch (RuntimeException ex) {
+                                    card.setFavorite(!selected);
+                                    JOptionPane.showMessageDialog(ManufacturerPanel.this,
+                                            "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                                            "Hiba", JOptionPane.ERROR_MESSAGE);
+                                }
+                            });
+                        }
                         cards.add(card);
                     }
                     cards.revalidate();
@@ -250,6 +296,20 @@ public class ManufacturerPanel extends JPanel {
     // kényelmi overload (kereső gomb/Enter)
     private void loadCardsByManufacturerAsync(String search) {
         loadCardsByManufacturerAsync(search, activeManufacturerKey);
+    }
+
+    public void refreshFavorites() {
+        loadCardsByManufacturerAsync(textField.getText(), activeManufacturerKey);
+    }
+
+    public void setFavoritesChangedCallback(Runnable favoritesChangedCallback) {
+        this.favoritesChangedCallback = favoritesChangedCallback;
+    }
+
+    private void notifyFavoritesChanged() {
+        if (favoritesChangedCallback != null) {
+            favoritesChangedCallback.run();
+        }
     }
 
     // Bal oldali listát feltölti: "Összes" + ABC szerint rendezett gyártók

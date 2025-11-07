@@ -130,7 +130,7 @@ public class LoginFrame extends JFrame {
         userDao.authenticate(username, password).ifPresentOrElse(
             user -> {
                 // Siker: főablak
-            	MainFrame mf = new MainFrame();
+                MainFrame mf = new MainFrame(user);
                 mf.setLocationRelativeTo(null);
                 mf.setVisible(true);
                 dispose();

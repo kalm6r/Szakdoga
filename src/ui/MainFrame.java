@@ -3,14 +3,20 @@ package ui;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import service.InventoryService;
+import dao.UserDao;
 
 public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel content = new JPanel(cardLayout);
+    private final UserDao.UserRecord currentUser;
 
     public MainFrame() {
+        this(null);
+    }
+
+    public MainFrame(UserDao.UserRecord user) {
         super("Szakdolgozat — Katalógus");
+        this.currentUser = user;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -66,14 +72,25 @@ public class MainFrame extends JFrame {
         root.add(content, BorderLayout.CENTER);
 
         // Valódi nézetek:
-        CategoryPanel categoryPanel = new CategoryPanel();   // ez a most elkészült, kártyás panel
+        Integer userId = currentUser != null ? currentUser.id() : null;
+
+        CategoryPanel categoryPanel = new CategoryPanel(userId);   // ez a most elkészült, kártyás panel
         content.add(categoryPanel, "category");
-        
-        ManufacturerPanel manufacturerPanel = new ManufacturerPanel();
+
+        ManufacturerPanel manufacturerPanel = new ManufacturerPanel(userId);
         content.add(manufacturerPanel, "manufacturer");
-        
-        PurchaseDatePanel purchaseDatePanel = new PurchaseDatePanel();
+
+        PurchaseDatePanel purchaseDatePanel = new PurchaseDatePanel(userId);
         content.add(purchaseDatePanel, "time");
+
+        Runnable favoritesChanged = () -> {
+            categoryPanel.refreshFavorites();
+            manufacturerPanel.refreshFavorites();
+            purchaseDatePanel.refreshFavorites();
+        };
+        categoryPanel.setFavoritesChangedCallback(favoritesChanged);
+        manufacturerPanel.setFavoritesChangedCallback(favoritesChanged);
+        purchaseDatePanel.setFavoritesChangedCallback(favoritesChanged);
 
         StatsPanel statsPanel = new StatsPanel();
         content.add(statsPanel, "stat");
