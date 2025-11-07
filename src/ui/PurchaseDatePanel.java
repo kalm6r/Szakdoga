@@ -82,7 +82,7 @@ public class PurchaseDatePanel extends JPanel {
 
     private final InventoryService inv = new InventoryService();
     private final Integer userId;
-    private Runnable favoritesChangedCallback;
+    private final FavoritesManager favoritesManager;
 
     public PurchaseDatePanel() {
         this(null, null);
@@ -92,9 +92,12 @@ public class PurchaseDatePanel extends JPanel {
         this(userId, null);
     }
 
-    public PurchaseDatePanel(Integer userId, Runnable favoritesChangedCallback) {
+    public PurchaseDatePanel(Integer userId, FavoritesManager favoritesManager) {
         this.userId = userId;
-        this.favoritesChangedCallback = favoritesChangedCallback;
+        this.favoritesManager = favoritesManager;
+        if (this.favoritesManager != null) {
+            this.favoritesManager.addChangeListener(this::refreshFavorites);
+        }
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
 
@@ -369,7 +372,9 @@ public class PurchaseDatePanel extends JPanel {
                         .collect(Collectors.toList());
                 }
 
-                Set<Integer> favoriteIds = userId != null ? inv.listFavoriteProductIds(userId) : Set.of();
+                Set<Integer> favoriteIds = favoritesManager != null
+                        ? favoritesManager.getFavoritesSnapshot()
+                        : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
 
                 // 5) ViewModel összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
@@ -414,27 +419,7 @@ public class PurchaseDatePanel extends JPanel {
                         ProductCard card = new ProductCard();
                         // <<< már NEM null a kép >>>
                         card.setData(vm.name, vm.middle, vm.price, vm.image);
-                        card.setFavoriteButtonVisible(userId != null);
-                        card.setFavorite(vm.favorite);
-                        if (userId != null) {
-                            card.addFavoriteToggleListener(evt -> {
-                                boolean selected = card.isFavoriteSelected();
-                                try {
-                                    boolean ok = selected
-                                            ? inv.addFavoriteProduct(userId, vm.productId)
-                                            : inv.removeFavoriteProduct(userId, vm.productId);
-                                    if (!ok) {
-                                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
-                                    }
-                                    notifyFavoritesChanged();
-                                } catch (RuntimeException ex) {
-                                    card.setFavorite(!selected);
-                                    JOptionPane.showMessageDialog(PurchaseDatePanel.this,
-                                            "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
-                                            "Hiba", JOptionPane.ERROR_MESSAGE);
-                                }
-                            });
-                        }
+                        configureFavoriteToggle(card, vm);
                         cards.add(card);
                     }
                     cards.revalidate();
@@ -453,14 +438,37 @@ public class PurchaseDatePanel extends JPanel {
         loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
     }
 
-    public void setFavoritesChangedCallback(Runnable favoritesChangedCallback) {
-        this.favoritesChangedCallback = favoritesChangedCallback;
-    }
-
-    private void notifyFavoritesChanged() {
-        if (favoritesChangedCallback != null) {
-            favoritesChangedCallback.run();
+    private void configureFavoriteToggle(ProductCard card, CardVM vm) {
+        boolean loggedIn = userId != null;
+        card.setFavoriteButtonVisible(true);
+        card.setFavoriteButtonEnabled(loggedIn);
+        if (!loggedIn) {
+            card.setFavorite(false);
+            return;
         }
+
+        card.setFavorite(vm.favorite);
+
+        card.addFavoriteToggleListener(evt -> {
+            boolean selected = card.isFavoriteSelected();
+            try {
+                if (favoritesManager != null) {
+                    favoritesManager.setFavorite(vm.productId, selected);
+                } else {
+                    boolean ok = selected
+                            ? inv.addFavoriteProduct(userId, vm.productId)
+                            : inv.removeFavoriteProduct(userId, vm.productId);
+                    if (!ok) {
+                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                    }
+                }
+            } catch (RuntimeException ex) {
+                card.setFavorite(!selected);
+                JOptionPane.showMessageDialog(PurchaseDatePanel.this,
+                        "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                        "Hiba", JOptionPane.ERROR_MESSAGE);
+            }
+        });
     }
 
     private String formatFt(int value) {

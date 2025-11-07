@@ -28,6 +28,7 @@ public class ProductCard extends JPanel {
     private final JLabel desc = new JLabel("<html><div style='width:150px;color:#666'>Rövid leírás…</div></html>");
     private final JLabel price = new JLabel("9 999 Ft");
     private final JToggleButton favoriteButton = new JToggleButton("☆");
+    private static final String DISABLED_FAVORITE_TOOLTIP = "Bejelentkezéssel jelölheted kedvencnek";
 
     public ProductCard() {
         setBackground(Color.WHITE);
@@ -105,7 +106,19 @@ public class ProductCard extends JPanel {
         favoriteButton.setVisible(visible);
     }
 
+    public void setFavoriteButtonEnabled(boolean enabled) {
+        favoriteButton.setEnabled(enabled);
+        updateFavoriteIcon();
+    }
+
     private void updateFavoriteIcon() {
+        if (!favoriteButton.isEnabled()) {
+            favoriteButton.setText("☆");
+            favoriteButton.setForeground(new Color(0xCCCCCC));
+            favoriteButton.setToolTipText(DISABLED_FAVORITE_TOOLTIP);
+            return;
+        }
+
         if (favoriteButton.isSelected()) {
             favoriteButton.setText("★");
             favoriteButton.setForeground(new Color(0xE0A000));

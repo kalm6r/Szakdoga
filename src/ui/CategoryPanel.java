@@ -68,7 +68,7 @@ public class CategoryPanel extends JPanel {
 
     private final InventoryService inv = new InventoryService();
     private final Integer userId;
-    private Runnable favoritesChangedCallback;
+    private final FavoritesManager favoritesManager;
     
     /**
      * Create the panel.
@@ -81,9 +81,12 @@ public class CategoryPanel extends JPanel {
         this(userId, null);
     }
 
-    public CategoryPanel(Integer userId, Runnable favoritesChangedCallback) {
+    public CategoryPanel(Integer userId, FavoritesManager favoritesManager) {
         this.userId = userId;
-        this.favoritesChangedCallback = favoritesChangedCallback;
+        this.favoritesManager = favoritesManager;
+        if (this.favoritesManager != null) {
+            this.favoritesManager.addChangeListener(this::refreshFavorites);
+        }
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
 
@@ -197,15 +200,13 @@ public class CategoryPanel extends JPanel {
             List<Product> products;
             Map<Integer, Supply> latestSupplyByProductId;
             List<CardVM> vms;
-            Set<Integer> favoriteIds = Set.of();
+            Set<Integer> favoriteIds = favoritesManager != null
+                    ? favoritesManager.getFavoritesSnapshot()
+                    : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
 
             @Override protected Void doInBackground() {
                 // Alap: összes termék
                 products = inv.listAllProducts();
-
-                if (userId != null) {
-                    favoriteIds = inv.listFavoriteProductIds(userId);
-                }
 
                 // Kategória-név szerinti szűrés: a névhez tartozó ÖSSZES category_id engedélyezett
                 if (categoryNameKey != null) {
@@ -272,19 +273,26 @@ public class CategoryPanel extends JPanel {
                     for (CardVM vm : vms) {      // <-- NEM 'products'-ból dolgozunk, hanem a vms-ből
                         ProductCard card = new ProductCard();
                         card.setData(vm.name, vm.middle, vm.price, vm.image);  // <-- itt már van kép
-                        card.setFavoriteButtonVisible(userId != null);
-                        card.setFavorite(vm.favorite);
-                        if (userId != null) {
+                        boolean loggedIn = userId != null;
+                        card.setFavoriteButtonVisible(true);
+                        card.setFavoriteButtonEnabled(loggedIn);
+                        if (!loggedIn) {
+                            card.setFavorite(false);
+                        } else {
+                            card.setFavorite(vm.favorite);
                             card.addFavoriteToggleListener(evt -> {
                                 boolean selected = card.isFavoriteSelected();
                                 try {
-                                    boolean ok = selected
-                                            ? inv.addFavoriteProduct(userId, vm.productId)
-                                            : inv.removeFavoriteProduct(userId, vm.productId);
-                                    if (!ok) {
-                                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                                    if (favoritesManager != null) {
+                                        favoritesManager.setFavorite(vm.productId, selected);
+                                    } else {
+                                        boolean ok = selected
+                                                ? inv.addFavoriteProduct(userId, vm.productId)
+                                                : inv.removeFavoriteProduct(userId, vm.productId);
+                                        if (!ok) {
+                                            throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                                        }
                                     }
-                                    notifyFavoritesChanged();
                                 } catch (RuntimeException ex) {
                                     card.setFavorite(!selected);
                                     JOptionPane.showMessageDialog(CategoryPanel.this,
@@ -314,16 +322,6 @@ public class CategoryPanel extends JPanel {
 
     public void refreshFavorites() {
         loadCardsAsync(textField.getText(), activeCategoryKey);
-    }
-
-    public void setFavoritesChangedCallback(Runnable favoritesChangedCallback) {
-        this.favoritesChangedCallback = favoritesChangedCallback;
-    }
-
-    private void notifyFavoritesChanged() {
-        if (favoritesChangedCallback != null) {
-            favoritesChangedCallback.run();
-        }
     }
 
  // Bal oldali listát feltölti: "Összes" + ABC szerint rendezett kategóriák
