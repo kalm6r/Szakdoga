@@ -1,11 +1,13 @@
 package service;
 
+import dao.FavoriteDao;
 import dao.ProductDao;
 import dao.ReportDao;
 import dao.SupplyDao;
 import dao.jdbc.JdbcProductDao;
 import dao.jdbc.JdbcReportDao;
 import dao.jdbc.JdbcSupplyDao;
+import dao.jdbc.JdbcFavoriteDao;
 import dto.TopProduct;
 import model.Product;
 import model.Supply;
@@ -14,9 +16,10 @@ import java.util.List;
 import java.util.Optional;
 
 public class InventoryService {
-    private final ProductDao productDao = new JdbcProductDao();
-    private final SupplyDao supplyDao   = new JdbcSupplyDao();
-    private final ReportDao reportDao   = new JdbcReportDao();
+    private final ProductDao productDao   = new JdbcProductDao();
+    private final SupplyDao supplyDao     = new JdbcSupplyDao();
+    private final ReportDao reportDao     = new JdbcReportDao();
+    private final FavoriteDao favoriteDao = new JdbcFavoriteDao();
 
     // Product műveletek
     public List<Product> listAllProducts() {
@@ -63,5 +66,18 @@ public class InventoryService {
     // Rangsor
     public List<TopProduct> topBySellPrice(int n) {
         return reportDao.topBySellPrice(n);
+    }
+
+    // Kedvencek
+    public java.util.Set<Integer> listFavoriteProductIds(int userId) {
+        return favoriteDao.findProductIdsByUser(userId);
+    }
+
+    public boolean addFavoriteProduct(int userId, int productId) {
+        return favoriteDao.add(userId, productId);
+    }
+
+    public boolean removeFavoriteProduct(int userId, int productId) {
+        return favoriteDao.remove(userId, productId);
     }
 }

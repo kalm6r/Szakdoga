@@ -1,16 +1,13 @@
 package ui;
 
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Component;
 import javax.swing.border.LineBorder;
 import java.awt.Color;
 import java.awt.GridLayout;
-import java.awt.Insets;
 
 import javax.swing.JButton;
 import javax.swing.JTextField;
@@ -21,7 +18,6 @@ import java.awt.Image;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.SwingConstants;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
 import javax.swing.SwingWorker;
@@ -32,6 +28,7 @@ import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -55,16 +52,41 @@ public class CategoryPanel extends JPanel {
     private JButton lastSelectedBtn = null;
     
     private static final class CardVM {
-        final String name, middle, price; final Image image;
-        CardVM(String n, String m, String p, Image i) { name=n; middle=m; price=p; image=i; }
+        final int productId;
+        final String name, middle, price;
+        final Image image;
+        final boolean favorite;
+        CardVM(int id, String n, String m, String p, Image i, boolean fav) {
+            productId = id;
+            name = n;
+            middle = m;
+            price = p;
+            image = i;
+            favorite = fav;
+        }
     }
 
     private final InventoryService inv = new InventoryService();
+    private final Integer userId;
+    private final FavoritesManager favoritesManager;
     
     /**
      * Create the panel.
      */
     public CategoryPanel() {
+        this(null, null);
+    }
+
+    public CategoryPanel(Integer userId) {
+        this(userId, null);
+    }
+
+    public CategoryPanel(Integer userId, FavoritesManager favoritesManager) {
+        this.userId = userId;
+        this.favoritesManager = favoritesManager;
+        if (this.favoritesManager != null) {
+            this.favoritesManager.addChangeListener(this::refreshFavorites);
+        }
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
 
@@ -178,6 +200,9 @@ public class CategoryPanel extends JPanel {
             List<Product> products;
             Map<Integer, Supply> latestSupplyByProductId;
             List<CardVM> vms;
+            Set<Integer> favoriteIds = favoritesManager != null
+                    ? favoritesManager.getFavoritesSnapshot()
+                    : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
 
             @Override protected Void doInBackground() {
                 // Alap: összes termék
@@ -235,9 +260,10 @@ public class CategoryPanel extends JPanel {
                     Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
 
 
-                    return new CardVM(p.getName(), middle, price, img);
+                    boolean favorite = favoriteIds.contains(p.getId());
+                    return new CardVM(p.getId(), p.getName(), middle, price, img, favorite);
                 }).collect(Collectors.toList());
-                
+
                 return null;
             }
 
@@ -247,6 +273,34 @@ public class CategoryPanel extends JPanel {
                     for (CardVM vm : vms) {      // <-- NEM 'products'-ból dolgozunk, hanem a vms-ből
                         ProductCard card = new ProductCard();
                         card.setData(vm.name, vm.middle, vm.price, vm.image);  // <-- itt már van kép
+                        boolean loggedIn = userId != null;
+                        card.setFavoriteButtonVisible(true);
+                        card.setFavoriteButtonEnabled(loggedIn);
+                        if (!loggedIn) {
+                            card.setFavorite(false);
+                        } else {
+                            card.setFavorite(vm.favorite);
+                            card.addFavoriteToggleListener(evt -> {
+                                boolean selected = card.isFavoriteSelected();
+                                try {
+                                    if (favoritesManager != null) {
+                                        favoritesManager.setFavorite(vm.productId, selected);
+                                    } else {
+                                        boolean ok = selected
+                                                ? inv.addFavoriteProduct(userId, vm.productId)
+                                                : inv.removeFavoriteProduct(userId, vm.productId);
+                                        if (!ok) {
+                                            throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                                        }
+                                    }
+                                } catch (RuntimeException ex) {
+                                    card.setFavorite(!selected);
+                                    JOptionPane.showMessageDialog(CategoryPanel.this,
+                                            "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                                            "Hiba", JOptionPane.ERROR_MESSAGE);
+                                }
+                            });
+                        }
                         cards.add(card);
                     }
                     cards.revalidate();
@@ -264,6 +318,10 @@ public class CategoryPanel extends JPanel {
     // kényelmi overload (kereső gomb/Enter)
     private void loadCardsAsync(String search) {
         loadCardsAsync(search, activeCategoryKey);
+    }
+
+    public void refreshFavorites() {
+        loadCardsAsync(textField.getText(), activeCategoryKey);
     }
 
  // Bal oldali listát feltölti: "Összes" + ABC szerint rendezett kategóriák

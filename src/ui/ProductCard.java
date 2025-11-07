@@ -5,12 +5,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.Insets;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToggleButton;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
@@ -25,6 +27,8 @@ public class ProductCard extends JPanel {
     private final JTextArea name = new JTextArea("Termék neve");
     private final JLabel desc = new JLabel("<html><div style='width:150px;color:#666'>Rövid leírás…</div></html>");
     private final JLabel price = new JLabel("9 999 Ft");
+    private final JToggleButton favoriteButton = new JToggleButton("☆");
+    private static final String DISABLED_FAVORITE_TOOLTIP = "Bejelentkezéssel jelölheted kedvencnek";
 
     public ProductCard() {
         setBackground(Color.WHITE);
@@ -53,9 +57,29 @@ public class ProductCard extends JPanel {
         center.add(Box.createVerticalStrut(4));
         center.add(desc);
 
-        add(img, BorderLayout.NORTH);
+        favoriteButton.setFocusPainted(false);
+        favoriteButton.setBorderPainted(false);
+        favoriteButton.setContentAreaFilled(false);
+        favoriteButton.setOpaque(false);
+        favoriteButton.setMargin(new Insets(0, 0, 0, 0));
+        favoriteButton.setFont(favoriteButton.getFont().deriveFont(Font.PLAIN, 20f));
+        favoriteButton.setToolTipText("Kedvencek hozzáadása");
+        favoriteButton.addChangeListener(e -> updateFavoriteIcon());
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(img, BorderLayout.CENTER);
+
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setOpaque(false);
+        price.setBorder(new EmptyBorder(0, 0, 0, 0));
+        bottom.add(price, BorderLayout.WEST);
+        bottom.add(favoriteButton, BorderLayout.EAST);
+
+        add(top, BorderLayout.NORTH);
         add(center, BorderLayout.CENTER);
-        add(price, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
+        updateFavoriteIcon();
     }
 
     public void setData(String nameText, String descText, String priceText, Image image) {
@@ -64,6 +88,45 @@ public class ProductCard extends JPanel {
         price.setText(priceText);
         img.setIcon(image != null ? new ImageIcon(image) : null);
     }
+
+    public void setFavorite(boolean favorite) {
+        favoriteButton.setSelected(favorite);
+        updateFavoriteIcon();
+    }
+
+    public boolean isFavoriteSelected() {
+        return favoriteButton.isSelected();
+    }
+
+    public void addFavoriteToggleListener(java.awt.event.ActionListener listener) {
+        favoriteButton.addActionListener(listener);
+    }
+
+    public void setFavoriteButtonVisible(boolean visible) {
+        favoriteButton.setVisible(visible);
+    }
+
+    public void setFavoriteButtonEnabled(boolean enabled) {
+        favoriteButton.setEnabled(enabled);
+        updateFavoriteIcon();
+    }
+
+    private void updateFavoriteIcon() {
+        if (!favoriteButton.isEnabled()) {
+            favoriteButton.setText("☆");
+            favoriteButton.setForeground(new Color(0xCCCCCC));
+            favoriteButton.setToolTipText(DISABLED_FAVORITE_TOOLTIP);
+            return;
+        }
+
+        if (favoriteButton.isSelected()) {
+            favoriteButton.setText("★");
+            favoriteButton.setForeground(new Color(0xE0A000));
+            favoriteButton.setToolTipText("Kedvenc eltávolítása");
+        } else {
+            favoriteButton.setText("☆");
+            favoriteButton.setForeground(new Color(0x999999));
+            favoriteButton.setToolTipText("Kedvencek hozzáadása");
+        }
+    }
 }
-
-

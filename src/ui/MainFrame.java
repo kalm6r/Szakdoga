@@ -3,14 +3,21 @@ package ui;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import dao.UserDao;
 import service.InventoryService;
 
 public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel content = new JPanel(cardLayout);
+    private final UserDao.UserRecord currentUser;
 
     public MainFrame() {
+        this(null);
+    }
+
+    public MainFrame(UserDao.UserRecord user) {
         super("Szakdolgozat — Katalógus");
+        this.currentUser = user;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -66,13 +73,18 @@ public class MainFrame extends JFrame {
         root.add(content, BorderLayout.CENTER);
 
         // Valódi nézetek:
-        CategoryPanel categoryPanel = new CategoryPanel();   // ez a most elkészült, kártyás panel
+        Integer userId = currentUser != null ? currentUser.id() : null;
+
+        InventoryService favoriteInventory = new InventoryService();
+        FavoritesManager favoritesManager = new FavoritesManager(userId, favoriteInventory);
+
+        CategoryPanel categoryPanel = new CategoryPanel(userId, favoritesManager);   // ez a most elkészült, kártyás panel
         content.add(categoryPanel, "category");
-        
-        ManufacturerPanel manufacturerPanel = new ManufacturerPanel();
+
+        ManufacturerPanel manufacturerPanel = new ManufacturerPanel(userId, favoritesManager);
         content.add(manufacturerPanel, "manufacturer");
-        
-        PurchaseDatePanel purchaseDatePanel = new PurchaseDatePanel();
+
+        PurchaseDatePanel purchaseDatePanel = new PurchaseDatePanel(userId, favoritesManager);
         content.add(purchaseDatePanel, "time");
 
         StatsPanel statsPanel = new StatsPanel();
