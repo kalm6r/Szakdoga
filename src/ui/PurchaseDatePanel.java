@@ -47,11 +47,20 @@ import java.awt.Image;
 
 public class PurchaseDatePanel extends JPanel {
 
-	private static final class CardVM {
-	    final String name, middle, price; 
-	    final Image image;
-	    CardVM(String n, String m, String p, Image i) { name=n; middle=m; price=p; image=i; }
-	}
+        private static final class CardVM {
+            final int productId;
+            final String name, middle, price;
+            final Image image;
+            final boolean favorite;
+            CardVM(int id, String n, String m, String p, Image i, boolean fav) {
+                productId = id;
+                name = n;
+                middle = m;
+                price = p;
+                image = i;
+                favorite = fav;
+            }
+        }
 	
     private static final long serialVersionUID = 1L;
     private JTextField textField;
@@ -72,8 +81,23 @@ public class PurchaseDatePanel extends JPanel {
     private final Map<Integer, Set<Integer>> monthsByYear = new HashMap<>();
 
     private final InventoryService inv = new InventoryService();
+    private final Integer userId;
+    private final FavoritesManager favoritesManager;
 
     public PurchaseDatePanel() {
+        this(null, null);
+    }
+
+    public PurchaseDatePanel(Integer userId) {
+        this(userId, null);
+    }
+
+    public PurchaseDatePanel(Integer userId, FavoritesManager favoritesManager) {
+        this.userId = userId;
+        this.favoritesManager = favoritesManager;
+        if (this.favoritesManager != null) {
+            this.favoritesManager.addChangeListener(this::refreshFavorites);
+        }
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
 
@@ -348,6 +372,10 @@ public class PurchaseDatePanel extends JPanel {
                         .collect(Collectors.toList());
                 }
 
+                Set<Integer> favoriteIds = favoritesManager != null
+                        ? favoritesManager.getFavoritesSnapshot()
+                        : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
+
                 // 5) ViewModel összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
                     // középső sor: alkategória -> kategória
@@ -376,7 +404,8 @@ public class PurchaseDatePanel extends JPanel {
                     Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
 
 
-                    return new CardVM(p.getName(), middle, priceText, img);
+                    boolean favorite = favoriteIds.contains(p.getId());
+                    return new CardVM(p.getId(), p.getName(), middle, priceText, img, favorite);
                 }).collect(Collectors.toList());
 
                 return vms;
@@ -390,6 +419,7 @@ public class PurchaseDatePanel extends JPanel {
                         ProductCard card = new ProductCard();
                         // <<< már NEM null a kép >>>
                         card.setData(vm.name, vm.middle, vm.price, vm.image);
+                        configureFavoriteToggle(card, vm);
                         cards.add(card);
                     }
                     cards.revalidate();
@@ -402,6 +432,43 @@ public class PurchaseDatePanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    public void refreshFavorites() {
+        loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+    }
+
+    private void configureFavoriteToggle(ProductCard card, CardVM vm) {
+        boolean loggedIn = userId != null;
+        card.setFavoriteButtonVisible(true);
+        card.setFavoriteButtonEnabled(loggedIn);
+        if (!loggedIn) {
+            card.setFavorite(false);
+            return;
+        }
+
+        card.setFavorite(vm.favorite);
+
+        card.addFavoriteToggleListener(evt -> {
+            boolean selected = card.isFavoriteSelected();
+            try {
+                if (favoritesManager != null) {
+                    favoritesManager.setFavorite(vm.productId, selected);
+                } else {
+                    boolean ok = selected
+                            ? inv.addFavoriteProduct(userId, vm.productId)
+                            : inv.removeFavoriteProduct(userId, vm.productId);
+                    if (!ok) {
+                        throw new RuntimeException("A kedvenc állapot mentése nem sikerült.");
+                    }
+                }
+            } catch (RuntimeException ex) {
+                card.setFavorite(!selected);
+                JOptionPane.showMessageDialog(PurchaseDatePanel.this,
+                        "Nem sikerült frissíteni a kedvencek listáját.\n" + ex.getMessage(),
+                        "Hiba", JOptionPane.ERROR_MESSAGE);
+            }
+        });
     }
 
     private String formatFt(int value) {
