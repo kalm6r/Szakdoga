@@ -37,6 +37,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import model.Product;
 import model.Supply;
@@ -49,18 +50,26 @@ public class PurchaseDatePanel extends JPanel {
 
         private static final class CardVM {
             final int productId;
-            final String name, middle, price;
+            final String name;
+            final String middle;
+            final String purchasePrice;
+            final String purchaseDate;
+            final String sellPrice;
             final Image image;
             final boolean favorite;
-            CardVM(int id, String n, String m, String p, Image i, boolean fav) {
+            CardVM(int id, String n, String m, String purchasePrice, String purchaseDate, String sellPrice, Image i, boolean fav) {
                 productId = id;
                 name = n;
                 middle = m;
-                price = p;
+                this.purchasePrice = purchasePrice;
+                this.purchaseDate = purchaseDate;
+                this.sellPrice = sellPrice;
                 image = i;
                 favorite = fav;
             }
         }
+        
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
 	
     private static final long serialVersionUID = 1L;
     private JTextField textField;
@@ -390,7 +399,9 @@ public class PurchaseDatePanel extends JPanel {
 
                     // ár a legutóbbi supply-ból
                     Supply s = latestSupplyByProductId.get(p.getId());
-                    String priceText = (s != null) ? formatFt(s.getSellPrice()) : "";
+                    String purchasePrice = (s != null) ? formatFt(s.getPurchasePrice()) : "";
+                    String purchaseDate = (s != null && s.getBought() != null) ? formatDate(s.getBought()) : "";
+                    String sellPrice = (s != null) ? formatFt(s.getSellPrice()) : "";
 
                     double scale = 1.0;
                     java.awt.GraphicsConfiguration gc = PurchaseDatePanel.this.getGraphicsConfiguration();
@@ -405,7 +416,7 @@ public class PurchaseDatePanel extends JPanel {
 
 
                     boolean favorite = favoriteIds.contains(p.getId());
-                    return new CardVM(p.getId(), p.getName(), middle, priceText, img, favorite);
+                    return new CardVM(p.getId(), p.getName(), middle, purchasePrice, purchaseDate, sellPrice, img, favorite);
                 }).collect(Collectors.toList());
 
                 return vms;
@@ -418,7 +429,7 @@ public class PurchaseDatePanel extends JPanel {
                     for (CardVM vm : vms) {
                         ProductCard card = new ProductCard();
                         // <<< már NEM null a kép >>>
-                        card.setData(vm.name, vm.middle, vm.price, vm.image);
+                        card.setData(vm.name, vm.middle, vm.purchasePrice, vm.purchaseDate, vm.sellPrice, vm.image);
                         configureFavoriteToggle(card, vm);
                         cards.add(card);
                     }
@@ -475,5 +486,9 @@ public class PurchaseDatePanel extends JPanel {
         NumberFormat nf = NumberFormat.getIntegerInstance(new Locale("hu", "HU"));
         nf.setGroupingUsed(true);
         return nf.format(value) + " Ft";
+    }
+    
+    private String formatDate(LocalDate value) {
+        return value.format(DATE_FORMATTER);
     }
 }

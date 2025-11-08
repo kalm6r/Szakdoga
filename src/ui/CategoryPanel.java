@@ -32,6 +32,9 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 import model.Product;
 import model.Supply;
 import service.InventoryService;
@@ -53,18 +56,25 @@ public class CategoryPanel extends JPanel {
     
     private static final class CardVM {
         final int productId;
-        final String name, middle, price;
+        final String name;
+        final String middle;
+        final String purchasePrice;
+        final String purchaseDate;
+        final String sellPrice;
         final Image image;
         final boolean favorite;
-        CardVM(int id, String n, String m, String p, Image i, boolean fav) {
+        CardVM(int id, String n, String m, String purchasePrice, String purchaseDate, String sellPrice, Image i, boolean fav) {
             productId = id;
             name = n;
             middle = m;
-            price = p;
+            this.purchasePrice = purchasePrice;
+            this.purchaseDate = purchaseDate;
+            this.sellPrice = sellPrice;
             image = i;
             favorite = fav;
         }
     }
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
 
     private final InventoryService inv = new InventoryService();
     private final Integer userId;
@@ -241,7 +251,9 @@ public class CategoryPanel extends JPanel {
                         }
                     }
                     Supply s = latestSupplyByProductId.get(p.getId());
-                    String price = (s != null) ? formatFt(s.getSellPrice()) : "";
+                    String purchasePrice = (s != null) ? formatFt(s.getPurchasePrice()) : "";
+                    String purchaseDate = (s != null && s.getBought() != null) ? formatDate(s.getBought()) : "";
+                    String sellPrice = (s != null) ? formatFt(s.getSellPrice()) : "";
 
                     double scale = 1.0;
                     java.awt.GraphicsConfiguration gc = CategoryPanel.this.getGraphicsConfiguration();
@@ -261,7 +273,7 @@ public class CategoryPanel extends JPanel {
 
 
                     boolean favorite = favoriteIds.contains(p.getId());
-                    return new CardVM(p.getId(), p.getName(), middle, price, img, favorite);
+                    return new CardVM(p.getId(), p.getName(), middle, purchasePrice, purchaseDate, sellPrice, img, favorite);
                 }).collect(Collectors.toList());
 
                 return null;
@@ -272,7 +284,7 @@ public class CategoryPanel extends JPanel {
                     cards.removeAll();
                     for (CardVM vm : vms) {      // <-- NEM 'products'-ból dolgozunk, hanem a vms-ből
                         ProductCard card = new ProductCard();
-                        card.setData(vm.name, vm.middle, vm.price, vm.image);  // <-- itt már van kép
+                        card.setData(vm.name, vm.middle, vm.purchasePrice, vm.purchaseDate, vm.sellPrice, vm.image); 
                         boolean loggedIn = userId != null;
                         card.setFavoriteButtonVisible(true);
                         card.setFavoriteButtonEnabled(loggedIn);
@@ -393,5 +405,8 @@ public class CategoryPanel extends JPanel {
         NumberFormat nf = NumberFormat.getIntegerInstance(new Locale("hu", "HU"));
         nf.setGroupingUsed(true);
         return nf.format(value) + " Ft";
+    }
+    private String formatDate(LocalDate value) {
+        return value.format(DATE_FORMATTER);
     }
 }
