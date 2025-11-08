@@ -25,7 +25,9 @@ public class ProductCard extends JPanel {
 
     private final JLabel img = new JLabel();
     private final JTextArea name = new JTextArea("Termék neve");
-    private final JLabel desc = new JLabel("<html><div style='width:150px;color:#666'>Rövid leírás…</div></html>");
+    private final JLabel middleLabel = new JLabel("<html><div style='width:150px;color:#666'>Rövid leírás…</div></html>");
+    private final JLabel purchasePriceLabel = new JLabel("Beszerzési ár: -");
+    private final JLabel purchaseDateLabel = new JLabel("Beszerzés ideje: -");
     private final JLabel price = new JLabel("9 999 Ft");
     private final JToggleButton favoriteButton = new JToggleButton("☆");
     private static final String DISABLED_FAVORITE_TOOLTIP = "Bejelentkezéssel jelölheted kedvencnek";
@@ -46,16 +48,36 @@ public class ProductCard extends JPanel {
         name.setOpaque(false);
         name.setBorder(null);
         name.setAlignmentX(LEFT_ALIGNMENT);
-        name.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         name.setFont(name.getFont().deriveFont(Font.BOLD, 14f));
+        int maxNameLines = 2;
+        int lineHeight = name.getFontMetrics(name.getFont()).getHeight();
+        int maxNameHeight = lineHeight * maxNameLines;
+        name.setMaximumSize(new Dimension(Integer.MAX_VALUE, maxNameHeight));
+        name.setPreferredSize(new Dimension(0, maxNameHeight));
+        name.setMinimumSize(new Dimension(0, maxNameHeight));
         price.setFont(price.getFont().deriveFont(Font.BOLD));
 
         JPanel center = new JPanel();
         center.setOpaque(false);
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.add(name);
-        center.add(Box.createVerticalStrut(4));
-        center.add(desc);
+        center.add(Box.createVerticalStrut(0));
+        middleLabel.setAlignmentX(LEFT_ALIGNMENT);
+        middleLabel.setForeground(new Color(0x666666));
+        center.add(middleLabel);
+        center.add(Box.createVerticalStrut(10));
+
+        purchasePriceLabel.setAlignmentX(LEFT_ALIGNMENT);
+        purchasePriceLabel.setFont(purchasePriceLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        purchasePriceLabel.setForeground(new Color(0x333333));
+        center.add(purchasePriceLabel);
+
+        center.add(Box.createVerticalStrut(2));
+
+        purchaseDateLabel.setAlignmentX(LEFT_ALIGNMENT);
+        purchaseDateLabel.setFont(purchaseDateLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        purchaseDateLabel.setForeground(new Color(0x333333));
+        center.add(purchaseDateLabel);
 
         favoriteButton.setFocusPainted(false);
         favoriteButton.setBorderPainted(false);
@@ -82,10 +104,13 @@ public class ProductCard extends JPanel {
         updateFavoriteIcon();
     }
 
-    public void setData(String nameText, String descText, String priceText, Image image) {
-        name.setText(nameText);
-        desc.setText("<html><div style='width:150px;color:#666'>" + descText + "</div></html>");
-        price.setText(priceText);
+    public void setData(String nameText, String middleText, String purchasePriceText,String purchaseDateText,String sellPriceText,Image image) {
+    	name.setText(nameText != null ? nameText : "");
+    	String safeMiddle = (middleText == null || middleText.isBlank()) ? "" : middleText;
+    	middleLabel.setText("<html><div style='width:150px;color:#666'>" + safeMiddle + "</div></html>");
+    	purchasePriceLabel.setText("Beszerzési ár: " + (purchasePriceText == null || purchasePriceText.isBlank() ? "-" : purchasePriceText));
+    	purchaseDateLabel.setText("Beszerzés ideje: " + (purchaseDateText == null || purchaseDateText.isBlank() ? "-" : purchaseDateText));
+    	price.setText("Eladási ár: " + (sellPriceText == null || sellPriceText.isBlank() ? "-" : sellPriceText));
         img.setIcon(image != null ? new ImageIcon(image) : null);
     }
 
