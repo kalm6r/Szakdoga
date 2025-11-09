@@ -34,7 +34,7 @@ public class TopProductsPanel extends JPanel {
         topBar.setBounds(61, 43, 825, 38);
         add(topBar);
         title.setFont(new Font("Segoe UI", Font.PLAIN, 23));
-        title.setBounds(0, 0, 500, 36);
+        title.setBounds(16, 0, 500, 36);
         topBar.add(title);
 
         // Diagram doboz

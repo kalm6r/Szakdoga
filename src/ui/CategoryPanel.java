@@ -153,7 +153,7 @@ public class CategoryPanel extends JPanel {
         updateFavoriteFilterIcon();
 
         JLabel lblNewLabel = new JLabel("Kategória szerint");
-        lblNewLabel.setBounds(0, 0, 171, 36);
+        lblNewLabel.setBounds(16, 0, 171, 36);
         panel_3.add(lblNewLabel);
         lblNewLabel.setFont(new Font("Segoe UI", Font.PLAIN, 23));
 
@@ -177,6 +177,11 @@ public class CategoryPanel extends JPanel {
         // --- KÁRTYÁK + GÖRGETÉS ---
         cards = new JPanel(new GridLayout(0, 3, 16, 16)); // <-- 4 helyett 3
         cards.setBorder(new EmptyBorder(16, 16, 16, 16));
+        
+        final int cardsX = 310;
+        final int cardsY = 110;
+        final int cardsWidth = 576;
+        final int cardsHeight = 350;
 
         cardsScroll = new JScrollPane(
         	    cards,
@@ -184,16 +189,20 @@ public class CategoryPanel extends JPanel {
         	    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER // ne legyen vízszintes görgetés
         	);
         cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
-        cardsScroll.setBounds(310, 110, 576, 350);
+        cardsScroll.setBounds(cardsX, cardsY, cardsWidth, cardsHeight);
         cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
 
         add(cardsScroll);
+        
+        final int sliderSpacing = 8;
+        final int pricePanelHeight = 36;
+        final int pricePanelY = cardsY + cardsHeight + sliderSpacing;
 
         JPanel priceFilterPanel = new JPanel(new BorderLayout(12, 0));
         priceFilterPanel.setOpaque(false);
-        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 0, 12));
-        priceFilterPanel.setBounds(310, 470, 576, 48);
+        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 8, 12));
+        priceFilterPanel.setBounds(cardsX, pricePanelY, cardsWidth, pricePanelHeight);
         add(priceFilterPanel);
 
         JLabel priceFilterTitle = new JLabel("Ár szerinti szűrés");

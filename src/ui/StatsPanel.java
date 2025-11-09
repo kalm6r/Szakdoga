@@ -32,7 +32,7 @@ public class StatsPanel extends JPanel {
         add(topBar);
 
         title.setFont(new Font("Segoe UI", Font.PLAIN, 23));
-        title.setBounds(0, 0, 300, 36);
+        title.setBounds(16, 0, 300, 36);
         topBar.add(title);
 
         // Diagramok – két egymás alatti doboz
