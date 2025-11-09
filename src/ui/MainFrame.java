@@ -101,7 +101,7 @@ public class MainFrame extends JFrame {
         TopProductsPanel topProductsPanel = new TopProductsPanel();
         content.add(topProductsPanel, "top");
 
-        ProductManagementPanel productManagementPanel = new ProductManagementPanel();
+        ProductManagementPanel productManagementPanel = new ProductManagementPanel(userId);
         content.add(productManagementPanel, "manage");
 
 

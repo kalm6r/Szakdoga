@@ -11,6 +11,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -20,6 +21,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -29,12 +31,17 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.io.File;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 public class ProductManagementPanel extends JPanel {
 
     private final InventoryService inventoryService = new InventoryService();
+    private final Integer currentUserId;
 
     private final DefaultListModel<Product> productListModel = new DefaultListModel<>();
     private final JList<Product> productList = new JList<>(productListModel);
@@ -44,12 +51,21 @@ public class ProductManagementPanel extends JPanel {
     private final JTextField userIdField = new JTextField();
     private final JTextField imageUrlField = new JTextField();
     private final JComboBox<CategoryOption> categoryCombo = new JComboBox<>();
+    private final JButton browseImageButton = new JButton("Tallózás...");
+
+    private final JButton addButton;
+    private final JButton updateButton;
 
     private boolean updatingForm = false;
+    private int nextProductId = 1;
 
-    public ProductManagementPanel() {
+    public ProductManagementPanel(Integer currentUserId) {
+        this.currentUserId = currentUserId;
         setPreferredSize(new Dimension(896, 504));
         setLayout(null);
+
+        productIdField.setEditable(false);
+        userIdField.setEditable(false);
 
         JLabel title = new JLabel("Termékek kezelése");
         title.setFont(new Font("Segoe UI", Font.PLAIN, 23));
@@ -112,21 +128,28 @@ public class ProductManagementPanel extends JPanel {
         addRow(formPanel, gbcLabel, gbcField, 1, "Megnevezés", nameField);
         addRow(formPanel, gbcLabel, gbcField, 2, "Felhasználó azonosító", userIdField);
         addRow(formPanel, gbcLabel, gbcField, 3, "Kategória", categoryCombo);
-        addRow(formPanel, gbcLabel, gbcField, 4, "Kép URL", imageUrlField);
+
+        JPanel imageFieldPanel = new JPanel(new BorderLayout(8, 0));
+        imageFieldPanel.add(imageUrlField, BorderLayout.CENTER);
+        imageFieldPanel.add(browseImageButton, BorderLayout.EAST);
+        addRow(formPanel, gbcLabel, gbcField, 4, "Kép", imageFieldPanel);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 12));
         buttonPanel.setOpaque(false);
         formWrapper.add(buttonPanel, BorderLayout.SOUTH);
 
         JButton newButton = new JButton("Új");
-        JButton addButton = new JButton("Hozzáadás");
-        JButton updateButton = new JButton("Mentés");
+        addButton = new JButton("Hozzáadás");
+        updateButton = new JButton("Mentés");
         JButton deleteButton = new JButton("Törlés");
 
         buttonPanel.add(newButton);
         buttonPanel.add(addButton);
         buttonPanel.add(updateButton);
         buttonPanel.add(deleteButton);
+
+        addButton.setEnabled(currentUserId != null);
+        updateButton.setEnabled(false);
 
         newButton.addActionListener(e -> {
             productList.clearSelection();
@@ -136,6 +159,7 @@ public class ProductManagementPanel extends JPanel {
         addButton.addActionListener(e -> addProduct());
         updateButton.addActionListener(e -> updateProduct());
         deleteButton.addActionListener(e -> deleteSelectedProduct());
+        browseImageButton.addActionListener(e -> openImageChooser());
 
         loadCategories();
         loadProducts(-1);
@@ -155,13 +179,36 @@ public class ProductManagementPanel extends JPanel {
     private void loadCategories() {
         categoryCombo.removeAllItems();
         List<CategoryOption> categories = inventoryService.listAllCategories();
+        Set<Integer> addedCategoryIds = new HashSet<>();
+        Set<String> addedCategoryNames = new HashSet<>();
         for (CategoryOption option : categories) {
+            if (option == null) {
+                continue;
+            }
+
+            String name = option.getName();
+            if (name == null) {
+                continue;
+            }
+
+            String normalizedName = name.trim().toLowerCase(Locale.ROOT);
+            if (normalizedName.isEmpty()) {
+                continue;
+            }
+
+            if (addedCategoryIds.contains(option.getId()) || addedCategoryNames.contains(normalizedName)) {
+                continue;
+            }
+
+            addedCategoryIds.add(option.getId());
+            addedCategoryNames.add(normalizedName);
             categoryCombo.addItem(option);
         }
     }
 
     private void loadProducts(int selectProductId) {
         List<Product> products = inventoryService.listAllProducts();
+        updateNextProductId(products);
         productListModel.clear();
         int indexToSelect = -1;
         for (Product product : products) {
@@ -194,6 +241,10 @@ public class ProductManagementPanel extends JPanel {
             imageUrlField.setText(product.getImageUrl() == null ? "" : product.getImageUrl());
 
             selectCategory(product.getCategory());
+
+            boolean canEdit = canCurrentUserEdit(product);
+            setFormEditable(canEdit);
+            updateButton.setEnabled(canEdit);
         } finally {
             updatingForm = false;
         }
@@ -217,15 +268,23 @@ public class ProductManagementPanel extends JPanel {
 
     private void clearForm() {
         if (updatingForm) return;
-        productIdField.setText("");
-        productIdField.setEditable(true);
+        productIdField.setText(String.valueOf(nextProductId));
         nameField.setText("");
-        userIdField.setText("");
+        userIdField.setText(currentUserId == null ? "" : String.valueOf(currentUserId));
         imageUrlField.setText("");
         categoryCombo.setSelectedIndex(-1);
+        setFormEditable(currentUserId != null);
+        updateButton.setEnabled(false);
     }
 
     private void addProduct() {
+        if (currentUserId == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Csak bejelentkezett felhasználók vehetnek fel terméket.",
+                    "Nincs felhasználó",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         try {
             Product product = buildProductFromForm(null);
             Optional<Product> existing = inventoryService.findProductById(product.getId());
@@ -263,6 +322,14 @@ public class ProductManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this,
                     "Válassz ki egy terméket a listából a módosításhoz.",
                     "Nincs kiválasztott elem",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (!canCurrentUserEdit(selected)) {
+            JOptionPane.showMessageDialog(this,
+                    "Csak a termék létrehozója módosíthatja a terméket.",
+                    "Nincs jogosultság",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -339,8 +406,15 @@ public class ProductManagementPanel extends JPanel {
             throw new IllegalArgumentException("Válassz kategóriát a termékhez.");
         }
 
-        int id = Integer.parseInt(idText);
-        int userId = Integer.parseInt(userIdText);
+        int id = template != null ? template.getId() : Integer.parseInt(idText);
+        int userId;
+        if (template != null) {
+            userId = template.getUserId();
+        } else if (currentUserId != null) {
+            userId = currentUserId;
+        } else {
+            userId = Integer.parseInt(userIdText);
+        }
 
         Category category;
         if (template != null && template.getCategory() != null && template.getCategory().getId() == option.getId()) {
@@ -350,6 +424,49 @@ public class ProductManagementPanel extends JPanel {
         }
 
         return new Product(id, name, userId, category, imageUrl.isBlank() ? null : imageUrl);
+    }
+
+    private void updateNextProductId(List<Product> products) {
+        nextProductId = products.stream().mapToInt(Product::getId).max().orElse(0) + 1;
+    }
+
+    private boolean canCurrentUserEdit(Product product) {
+        return currentUserId != null && product != null && product.getUserId() == currentUserId;
+    }
+
+    private void setFormEditable(boolean editable) {
+        nameField.setEditable(editable);
+        imageUrlField.setEditable(editable);
+        categoryCombo.setEnabled(editable);
+        browseImageButton.setEnabled(editable);
+    }
+
+    private void openImageChooser() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(new FileNameExtensionFilter("Képfájlok", "png", "jpg", "jpeg", "gif", "bmp"));
+
+        String currentValue = imageUrlField.getText().trim();
+        if (!currentValue.isEmpty()) {
+            File currentFile = new File(currentValue);
+            if (currentFile.isDirectory()) {
+                chooser.setCurrentDirectory(currentFile);
+            } else {
+                File parent = currentFile.getParentFile();
+                if (parent != null && parent.exists()) {
+                    chooser.setCurrentDirectory(parent);
+                }
+            }
+        }
+
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = chooser.getSelectedFile();
+            if (selectedFile != null) {
+                imageUrlField.setText(selectedFile.getAbsolutePath());
+            }
+        }
     }
 }
 

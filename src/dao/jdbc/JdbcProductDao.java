@@ -118,14 +118,14 @@ public class JdbcProductDao implements ProductDao {
     }
 
     @Override public boolean update(Product p) {
-        String sql = "UPDATE product SET user_id=?, category_id=?, productname=?, image_url=? WHERE product_id=?";
+        String sql = "UPDATE product SET category_id=?, productname=?, image_url=? WHERE product_id=? AND user_id=?";
         try (Connection con = DBUtil.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, p.getUserId());
-            ps.setInt(2, p.getCategory().getId());
-            ps.setString(3, p.getName());
-            ps.setString(4, p.getImageUrl());
-            ps.setInt(5, p.getId());
+            ps.setInt(1, p.getCategory().getId());
+            ps.setString(2, p.getName());
+            ps.setString(3, p.getImageUrl());
+            ps.setInt(4, p.getId());
+            ps.setInt(5, p.getUserId());
             return ps.executeUpdate() == 1;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
