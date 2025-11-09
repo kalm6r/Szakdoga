@@ -14,6 +14,7 @@ import javax.swing.JTextField;
 import javax.swing.JLabel;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.Insets;
 
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -23,6 +24,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.SwingWorker;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.JOptionPane;
+import javax.swing.JToggleButton;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -44,6 +46,8 @@ public class CategoryPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private JTextField textField;
+    private JToggleButton favoriteFilterButton;
+    private boolean favoritesOnly = false;
 
     // --- HOZZÁADOTT mezők a kártyákhoz/DB-hez ---
     private JPanel cards;
@@ -105,6 +109,21 @@ public class CategoryPanel extends JPanel {
         add(panel_3);
         panel_3.setLayout(null);
 
+        favoriteFilterButton = new JToggleButton("☆");
+        favoriteFilterButton.setFocusPainted(false);
+        favoriteFilterButton.setBorderPainted(false);
+        favoriteFilterButton.setContentAreaFilled(false);
+        favoriteFilterButton.setOpaque(false);
+        favoriteFilterButton.setMargin(new Insets(0, 0, 0, 0));
+        favoriteFilterButton.setFont(favoriteFilterButton.getFont().deriveFont(Font.PLAIN, 20f));
+        favoriteFilterButton.setBounds(432, 7, 30, 30);
+        favoriteFilterButton.addActionListener(e -> {
+            favoritesOnly = favoriteFilterButton.isSelected();
+            loadCardsAsync(textField.getText(), activeCategoryKey);
+        });
+        favoriteFilterButton.addChangeListener(e -> updateFavoriteFilterIcon());
+        panel_3.add(favoriteFilterButton);
+
         JButton btnNewButton_5 = new JButton("");
         btnNewButton_5.setContentAreaFilled(false);
         btnNewButton_5.setBorderPainted(false);
@@ -117,6 +136,17 @@ public class CategoryPanel extends JPanel {
         textField.setBounds(472, 11, 315, 27);
         panel_3.add(textField);
         textField.setColumns(10);
+
+        boolean loggedIn = userId != null;
+        favoriteFilterButton.setEnabled(loggedIn);
+        if (!loggedIn) {
+            favoriteFilterButton.setToolTipText("Bejelentkezéssel szűrhetsz a kedvencekre");
+            favoriteFilterButton.setSelected(false);
+            favoritesOnly = false;
+        } else {
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
+        updateFavoriteFilterIcon();
 
         JLabel lblNewLabel = new JLabel("Kategória szerint");
         lblNewLabel.setBounds(0, 0, 171, 36);
@@ -206,6 +236,7 @@ public class CategoryPanel extends JPanel {
     // ------------------ SEGÉD: Kártyák betöltése háttérszálon ------------------
  // FŐ metódus: név + kategória szerinti szűrés
     private void loadCardsAsync(String search, String categoryNameKey) {
+        final boolean filterFavorites = favoritesOnly;
         new SwingWorker<Void, Void>() {
             List<Product> products;
             Map<Integer, Supply> latestSupplyByProductId;
@@ -231,6 +262,12 @@ public class CategoryPanel extends JPanel {
                     final String q = search.toLowerCase();
                     products = products.stream()
                             .filter(p -> p.getName() != null && p.getName().toLowerCase().contains(q))
+                            .collect(Collectors.toList());
+                }
+
+                if (filterFavorites) {
+                    products = products.stream()
+                            .filter(p -> favoriteIds.contains(p.getId()))
                             .collect(Collectors.toList());
                 }
 
@@ -400,7 +437,27 @@ public class CategoryPanel extends JPanel {
         btn.setBackground(new Color(230,230,230));
         btn.setForeground(Color.BLACK);
     }
-    
+
+    private void updateFavoriteFilterIcon() {
+        if (favoriteFilterButton == null) {
+            return;
+        }
+        if (!favoriteFilterButton.isEnabled()) {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0xCCCCCC));
+            return;
+        }
+        if (favoriteFilterButton.isSelected()) {
+            favoriteFilterButton.setText("★");
+            favoriteFilterButton.setForeground(new Color(0xE0A000));
+            favoriteFilterButton.setToolTipText("Csak a kedvencek mutatása");
+        } else {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0x999999));
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
+    }
+
     private String formatFt(int value) {
         NumberFormat nf = NumberFormat.getIntegerInstance(new Locale("hu", "HU"));
         nf.setGroupingUsed(true);
