@@ -82,6 +82,10 @@ public class PurchaseDatePanel extends JPanel {
     private JPanel cards;
     private JScrollPane cardsScroll;
 
+    private RangeSlider priceSlider;
+    private JLabel priceRangeLabel;
+    private boolean priceDataAvailable = false;
+
     // --- Bal oldali dátumlista (év → lenyíló hónapok) ---
     private JPanel dateList;         // panel_1-en belül, Y irányú lista
     private JButton lastSelectedBtn = null;
@@ -197,6 +201,26 @@ public class PurchaseDatePanel extends JPanel {
 
         add(cardsScroll);
 
+        JPanel priceFilterPanel = new JPanel(new BorderLayout(12, 0));
+        priceFilterPanel.setOpaque(false);
+        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 0, 12));
+        priceFilterPanel.setBounds(310, 470, 576, 48);
+        add(priceFilterPanel);
+
+        JLabel priceFilterTitle = new JLabel("Ár szerinti szűrés");
+        priceFilterTitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        priceFilterPanel.add(priceFilterTitle, BorderLayout.WEST);
+
+        priceSlider = new RangeSlider();
+        priceSlider.setEnabled(false);
+        priceSlider.setOpaque(false);
+        priceFilterPanel.add(priceSlider, BorderLayout.CENTER);
+
+        priceRangeLabel = new JLabel("Nincs ár adat");
+        priceRangeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        priceRangeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        priceFilterPanel.add(priceRangeLabel, BorderLayout.EAST);
+
         // Középre igazító belső padding (scrollbar kompenzáció) — változatlan logika
         Runnable recalcPadding = () -> {
             int viewportW = cardsScroll.getViewport().getWidth();
@@ -225,6 +249,7 @@ public class PurchaseDatePanel extends JPanel {
 
         // Bal oldali év/hónap lista feltöltése és induló betöltés
         populateDateList();
+        initializePriceFilter();
         loadCardsByPurchaseDateAsync(null, null, null); // Összes
     }
 
@@ -315,6 +340,52 @@ public class PurchaseDatePanel extends JPanel {
         dateList.repaint();
     }
 
+    private void initializePriceFilter() {
+        if (priceSlider == null || priceRangeLabel == null) {
+            return;
+        }
+
+        List<Supply> supplies = inv.listAllSupply();
+        if (supplies.isEmpty()) {
+            priceDataAvailable = false;
+            priceSlider.setRange(0, 0);
+            priceSlider.setEnabled(false);
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        priceDataAvailable = true;
+        int min = supplies.stream().mapToInt(Supply::getSellPrice).min().orElse(0);
+        int max = supplies.stream().mapToInt(Supply::getSellPrice).max().orElse(min);
+        priceSlider.setRange(min, max);
+        priceSlider.setEnabled(min != max);
+        updatePriceRangeLabel();
+
+        if (priceSlider.getChangeListeners().length == 0) {
+            priceSlider.addChangeListener(e -> {
+                updatePriceRangeLabel();
+                if (!priceSlider.getValueIsAdjusting()) {
+                    loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+                }
+            });
+        }
+    }
+
+    private void updatePriceRangeLabel() {
+        if (!priceDataAvailable) {
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        int lower = priceSlider.getValue();
+        int upper = priceSlider.getUpperValue();
+        if (!priceSlider.isEnabled() || lower == upper) {
+            priceRangeLabel.setText(formatFt(lower));
+        } else {
+            priceRangeLabel.setText(formatFt(lower) + " - " + formatFt(upper));
+        }
+    }
+
     private void toggleExpand(int year) {
         if (expandedYears.contains(year)) expandedYears.remove(year);
         else expandedYears.add(year);
@@ -397,6 +468,14 @@ public class PurchaseDatePanel extends JPanel {
     // ------------------ Kártyák betöltése háttérszálon (év/hónap szűréssel) ------------------
     private void loadCardsByPurchaseDateAsync(String search, Integer yearFilter, Integer monthFilter) {
         final boolean filterFavorites = favoritesOnly;
+        final RangeSlider slider = priceSlider;
+        final boolean priceAvailable = priceDataAvailable && slider != null;
+        final int sliderMin = priceAvailable ? slider.getMinimum() : Integer.MIN_VALUE;
+        final int sliderMax = priceAvailable ? slider.getMaximum() : Integer.MAX_VALUE;
+        final int minPriceFilter = priceAvailable ? slider.getValue() : Integer.MIN_VALUE;
+        final int maxPriceFilter = priceAvailable ? slider.getUpperValue() : Integer.MAX_VALUE;
+        final boolean priceFilterActive = priceAvailable && slider.isEnabled()
+                && (minPriceFilter > sliderMin || maxPriceFilter < sliderMax);
         new SwingWorker<java.util.List<CardVM>, Void>() {
             @Override protected java.util.List<CardVM> doInBackground() {
                 // 1) Összes termék
@@ -409,6 +488,19 @@ public class PurchaseDatePanel extends JPanel {
                         Function.identity(),
                         (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
                     ));
+
+                if (priceAvailable) {
+                    products = products.stream()
+                        .filter(p -> {
+                            Supply s = latestSupplyByProductId.get(p.getId());
+                            if (s == null) {
+                                return !priceFilterActive;
+                            }
+                            int sell = s.getSellPrice();
+                            return sell >= minPriceFilter && sell <= maxPriceFilter;
+                        })
+                        .collect(Collectors.toList());
+                }
 
                 // 3) Dátum szűrés a legutóbbi Supply alapján
                 if (yearFilter != null) {
