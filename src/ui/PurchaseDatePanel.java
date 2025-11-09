@@ -164,7 +164,7 @@ public class PurchaseDatePanel extends JPanel {
         updateFavoriteFilterIcon();
 
         JLabel lblNewLabel = new JLabel("Vásárlás dátuma szerint");
-        lblNewLabel.setBounds(0, 0, 300, 36);
+        lblNewLabel.setBounds(16, 0, 300, 36);
         panel_3.add(lblNewLabel);
         lblNewLabel.setFont(new Font("Segoe UI", Font.PLAIN, 23));
 
@@ -189,22 +189,31 @@ public class PurchaseDatePanel extends JPanel {
         cards = new JPanel(new GridLayout(0, 3, 16, 16));
         cards.setBorder(new EmptyBorder(16, 16, 16, 16));
 
+        final int cardsX = 310;
+        final int cardsY = 110;
+        final int cardsWidth = 576;
+        final int cardsHeight = 350;
+
         cardsScroll = new JScrollPane(
                 cards,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         );
         cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
-        cardsScroll.setBounds(310, 110, 576, 350);
+        cardsScroll.setBounds(cardsX, cardsY, cardsWidth, cardsHeight);
         cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
 
         add(cardsScroll);
 
+        final int sliderSpacing = 8;
+        final int pricePanelHeight = 36;
+        final int pricePanelY = cardsY + cardsHeight + sliderSpacing;
+
         JPanel priceFilterPanel = new JPanel(new BorderLayout(12, 0));
         priceFilterPanel.setOpaque(false);
-        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 0, 12));
-        priceFilterPanel.setBounds(310, 470, 576, 48);
+        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 8, 12));
+        priceFilterPanel.setBounds(cardsX, pricePanelY, cardsWidth, pricePanelHeight);
         add(priceFilterPanel);
 
         JLabel priceFilterTitle = new JLabel("Ár szerinti szűrés");
@@ -226,7 +235,7 @@ public class PurchaseDatePanel extends JPanel {
             int viewportW = cardsScroll.getViewport().getWidth();
             int sbw = cardsScroll.getVerticalScrollBar().getWidth();
             if (sbw <= 0) sbw = cardsScroll.getVerticalScrollBar().getPreferredSize().width;
-            final int COLS = 3, GAP = 16, CARD_W = 170, MIN_PAD = 16;
+            final int COLS = 3, GAP = 16, CARD_W = ProductCard.IMG_W, MIN_PAD = 16;
             int used = COLS * CARD_W + (COLS - 1) * GAP;
             int padLeft = Math.max(MIN_PAD, (viewportW - used) / 2);
             int padRight = padLeft + sbw + GAP;

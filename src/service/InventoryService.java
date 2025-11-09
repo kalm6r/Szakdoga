@@ -1,14 +1,17 @@
 package service;
 
+import dao.CategoryDao;
 import dao.FavoriteDao;
 import dao.ProductDao;
 import dao.ReportDao;
 import dao.SupplyDao;
+import dao.jdbc.JdbcCategoryDao;
+import dao.jdbc.JdbcFavoriteDao;
 import dao.jdbc.JdbcProductDao;
 import dao.jdbc.JdbcReportDao;
 import dao.jdbc.JdbcSupplyDao;
-import dao.jdbc.JdbcFavoriteDao;
 import dto.TopProduct;
+import dto.CategoryOption;
 import model.Product;
 import model.Supply;
 
@@ -20,6 +23,7 @@ public class InventoryService {
     private final SupplyDao supplyDao     = new JdbcSupplyDao();
     private final ReportDao reportDao     = new JdbcReportDao();
     private final FavoriteDao favoriteDao = new JdbcFavoriteDao();
+    private final CategoryDao categoryDao = new JdbcCategoryDao();
 
     // Product műveletek
     public List<Product> listAllProducts() {
@@ -44,6 +48,10 @@ public class InventoryService {
 
     public boolean deleteProduct(int productId) {
         return productDao.delete(productId);
+    }
+
+    public List<CategoryOption> listAllCategories() {
+        return categoryDao.listOptions();
     }
 
     // Supply műveletek
