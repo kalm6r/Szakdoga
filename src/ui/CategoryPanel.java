@@ -183,11 +183,16 @@ public class CategoryPanel extends JPanel {
         final int cardsWidth = 576;
         final int cardsHeight = 350;
 
+        final int cardsX = 310;
+        final int cardsY = 110;
+        final int cardsWidth = 576;
+        final int cardsHeight = 350;
+
         cardsScroll = new JScrollPane(
-        	    cards,
-        	    ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-        	    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER // ne legyen vízszintes görgetés
-        	);
+                    cards,
+                    ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER // ne legyen vízszintes görgetés
+                );
         cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
         cardsScroll.setBounds(cardsX, cardsY, cardsWidth, cardsHeight);
         cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -195,6 +200,10 @@ public class CategoryPanel extends JPanel {
 
         add(cardsScroll);
         
+        final int sliderSpacing = 8;
+        final int pricePanelHeight = 36;
+        final int pricePanelY = cardsY + cardsHeight + sliderSpacing;
+
         final int sliderSpacing = 8;
         final int pricePanelHeight = 36;
         final int pricePanelY = cardsY + cardsHeight + sliderSpacing;

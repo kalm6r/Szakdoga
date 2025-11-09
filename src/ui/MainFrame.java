@@ -33,7 +33,7 @@ public class MainFrame extends JFrame {
 
         JPanel panel_1 = new JPanel();
         panel_1.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
-        panel_1.setBounds(0, 155, 50, 194);
+        panel_1.setBounds(0, 155, 50, 230);
         panel.add(panel_1);
 
         JButton btnCategory = new JButton("");
@@ -66,7 +66,15 @@ public class MainFrame extends JFrame {
         btnTop.setBorderPainted(false);
         btnTop.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\top.png"));
         btnTop.setPreferredSize(new Dimension(30, 30));
-        
+
+        JButton btnManage = new JButton("✎");
+        panel_1.add(btnManage);
+        btnManage.setBorderPainted(false);
+        btnManage.setContentAreaFilled(false);
+        btnManage.setFocusPainted(false);
+        btnManage.setPreferredSize(new Dimension(30, 30));
+        btnManage.setFont(btnManage.getFont().deriveFont(Font.PLAIN, 18f));
+
 
 
         // --- KÖZÉPSŐ TARTALOM ---
@@ -89,9 +97,12 @@ public class MainFrame extends JFrame {
 
         StatsPanel statsPanel = new StatsPanel();
         content.add(statsPanel, "stat");
-        
+
         TopProductsPanel topProductsPanel = new TopProductsPanel();
         content.add(topProductsPanel, "top");
+
+        ProductManagementPanel productManagementPanel = new ProductManagementPanel();
+        content.add(productManagementPanel, "manage");
 
 
         // Kezdő nézet:
@@ -107,6 +118,7 @@ public class MainFrame extends JFrame {
         btnTime.addActionListener(e -> cardLayout.show(content, "time"));
         btnStat.addActionListener(e -> cardLayout.show(content, "stat"));
         btnTop.addActionListener(e -> cardLayout.show(content, "top"));
+        btnManage.addActionListener(e -> cardLayout.show(content, "manage"));
     }
 
     private JPanel centerLabel(String text) {
