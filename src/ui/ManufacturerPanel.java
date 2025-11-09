@@ -77,6 +77,10 @@ public class ManufacturerPanel extends JPanel {
     private JPanel cards;
     private JScrollPane cardsScroll;
 
+    private RangeSlider priceSlider;
+    private JLabel priceRangeLabel;
+    private boolean priceDataAvailable = false;
+
     private JPanel manufacturerList;            // panel_1-en belül, Y irányú lista
     private String activeManufacturerKey = null; // null = Összes
     private java.util.Map<String, java.util.Set<Integer>> manNameToIds = new java.util.HashMap<>();
@@ -187,6 +191,26 @@ public class ManufacturerPanel extends JPanel {
 
         add(cardsScroll);
 
+        JPanel priceFilterPanel = new JPanel(new BorderLayout(12, 0));
+        priceFilterPanel.setOpaque(false);
+        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 0, 12));
+        priceFilterPanel.setBounds(310, 470, 576, 48);
+        add(priceFilterPanel);
+
+        JLabel priceFilterTitle = new JLabel("Ár szerinti szűrés");
+        priceFilterTitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        priceFilterPanel.add(priceFilterTitle, BorderLayout.WEST);
+
+        priceSlider = new RangeSlider();
+        priceSlider.setEnabled(false);
+        priceSlider.setOpaque(false);
+        priceFilterPanel.add(priceSlider, BorderLayout.CENTER);
+
+        priceRangeLabel = new JLabel("Nincs ár adat");
+        priceRangeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        priceRangeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        priceFilterPanel.add(priceRangeLabel, BorderLayout.EAST);
+
         Runnable recalcPadding = () -> {
             int viewportW = cardsScroll.getViewport().getWidth();
 
@@ -222,6 +246,7 @@ public class ManufacturerPanel extends JPanel {
         textField.addActionListener(e -> loadCardsByManufacturerAsync(textField.getText())); // Enterre is keres
 
         populateManufacturerList();
+        initializePriceFilter();
         loadCardsByManufacturerAsync(null); // Összes + nincs névszűrés
     }
 
@@ -229,6 +254,14 @@ public class ManufacturerPanel extends JPanel {
     // FŐ metódus: név + gyártó szerinti szűrés
     private void loadCardsByManufacturerAsync(String search, String manufacturerNameKey) {
         final boolean filterFavorites = favoritesOnly;
+        final RangeSlider slider = priceSlider;
+        final boolean priceAvailable = priceDataAvailable && slider != null;
+        final int sliderMin = priceAvailable ? slider.getMinimum() : Integer.MIN_VALUE;
+        final int sliderMax = priceAvailable ? slider.getMaximum() : Integer.MAX_VALUE;
+        final int minPriceFilter = priceAvailable ? slider.getValue() : Integer.MIN_VALUE;
+        final int maxPriceFilter = priceAvailable ? slider.getUpperValue() : Integer.MAX_VALUE;
+        final boolean priceFilterActive = priceAvailable && slider.isEnabled()
+                && (minPriceFilter > sliderMin || maxPriceFilter < sliderMax);
         new SwingWorker<java.util.List<CardVM>, Void>() {
             @Override protected java.util.List<CardVM> doInBackground() {
                 // 1) Alap: összes termék
@@ -270,6 +303,19 @@ public class ManufacturerPanel extends JPanel {
                                 Function.identity(),
                                 (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
                         ));
+
+                if (priceAvailable) {
+                    products = products.stream()
+                            .filter(p -> {
+                                Supply s = latestSupplyByProductId.get(p.getId());
+                                if (s == null) {
+                                    return !priceFilterActive;
+                                }
+                                int sell = s.getSellPrice();
+                                return sell >= minPriceFilter && sell <= maxPriceFilter;
+                            })
+                            .collect(Collectors.toList());
+                }
 
                 // 5) VM-ek összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
@@ -402,6 +448,52 @@ public class ManufacturerPanel extends JPanel {
 
         manufacturerList.revalidate();
         manufacturerList.repaint();
+    }
+
+    private void initializePriceFilter() {
+        if (priceSlider == null || priceRangeLabel == null) {
+            return;
+        }
+
+        List<Supply> supplies = inv.listAllSupply();
+        if (supplies.isEmpty()) {
+            priceDataAvailable = false;
+            priceSlider.setRange(0, 0);
+            priceSlider.setEnabled(false);
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        priceDataAvailable = true;
+        int min = supplies.stream().mapToInt(Supply::getSellPrice).min().orElse(0);
+        int max = supplies.stream().mapToInt(Supply::getSellPrice).max().orElse(min);
+        priceSlider.setRange(min, max);
+        priceSlider.setEnabled(min != max);
+        updatePriceRangeLabel();
+
+        if (priceSlider.getChangeListeners().length == 0) {
+            priceSlider.addChangeListener(e -> {
+                updatePriceRangeLabel();
+                if (!priceSlider.getValueIsAdjusting()) {
+                    loadCardsByManufacturerAsync(textField.getText(), activeManufacturerKey);
+                }
+            });
+        }
+    }
+
+    private void updatePriceRangeLabel() {
+        if (!priceDataAvailable) {
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        int lower = priceSlider.getValue();
+        int upper = priceSlider.getUpperValue();
+        if (!priceSlider.isEnabled() || lower == upper) {
+            priceRangeLabel.setText(formatFt(lower));
+        } else {
+            priceRangeLabel.setText(formatFt(lower) + " - " + formatFt(upper));
+        }
     }
 
     private Manufacturer extractManufacturer(Product p) {

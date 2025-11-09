@@ -52,6 +52,10 @@ public class CategoryPanel extends JPanel {
     // --- HOZZÁADOTT mezők a kártyákhoz/DB-hez ---
     private JPanel cards;
     private JScrollPane cardsScroll;
+
+    private RangeSlider priceSlider;
+    private JLabel priceRangeLabel;
+    private boolean priceDataAvailable = false;
     
     private JPanel categoryList;                 // panel_1-en belül, Y irányú lista
     private String activeCategoryKey = null;
@@ -186,6 +190,25 @@ public class CategoryPanel extends JPanel {
 
         add(cardsScroll);
 
+        JPanel priceFilterPanel = new JPanel(new BorderLayout(12, 0));
+        priceFilterPanel.setOpaque(false);
+        priceFilterPanel.setBorder(new EmptyBorder(8, 12, 0, 12));
+        priceFilterPanel.setBounds(310, 470, 576, 48);
+        add(priceFilterPanel);
+
+        JLabel priceFilterTitle = new JLabel("Ár szerinti szűrés");
+        priceFilterTitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        priceFilterPanel.add(priceFilterTitle, BorderLayout.WEST);
+
+        priceSlider = new RangeSlider();
+        priceSlider.setEnabled(false);
+        priceSlider.setOpaque(false);
+        priceFilterPanel.add(priceSlider, BorderLayout.CENTER);
+
+        priceRangeLabel = new JLabel("Nincs ár adat");
+        priceRangeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        priceRangeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        priceFilterPanel.add(priceRangeLabel, BorderLayout.EAST);
 
         Runnable recalcPadding = () -> {
             int viewportW = cardsScroll.getViewport().getWidth();
@@ -228,6 +251,7 @@ public class CategoryPanel extends JPanel {
         textField.addActionListener(e -> loadCardsAsync(textField.getText())); // Enterre is keres
 
         populateCategoryList();
+        initializePriceFilter();
         loadCardsAsync(null); // Összes + nincs névszűrés
 
 
@@ -237,6 +261,14 @@ public class CategoryPanel extends JPanel {
  // FŐ metódus: név + kategória szerinti szűrés
     private void loadCardsAsync(String search, String categoryNameKey) {
         final boolean filterFavorites = favoritesOnly;
+        final RangeSlider slider = priceSlider;
+        final boolean priceAvailable = priceDataAvailable && slider != null;
+        final int sliderMin = priceAvailable ? slider.getMinimum() : Integer.MIN_VALUE;
+        final int sliderMax = priceAvailable ? slider.getMaximum() : Integer.MAX_VALUE;
+        final int minPriceFilter = priceAvailable ? slider.getValue() : Integer.MIN_VALUE;
+        final int maxPriceFilter = priceAvailable ? slider.getUpperValue() : Integer.MAX_VALUE;
+        final boolean priceFilterActive = priceAvailable && slider.isEnabled()
+                && (minPriceFilter > sliderMin || maxPriceFilter < sliderMax);
         new SwingWorker<Void, Void>() {
             List<Product> products;
             Map<Integer, Supply> latestSupplyByProductId;
@@ -278,6 +310,19 @@ public class CategoryPanel extends JPanel {
                                 Function.identity(),
                                 (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
                 ));
+
+                if (priceAvailable) {
+                    products = products.stream()
+                            .filter(p -> {
+                                Supply s = latestSupplyByProductId.get(p.getId());
+                                if (s == null) {
+                                    return !priceFilterActive;
+                                }
+                                int sell = s.getSellPrice();
+                                return sell >= minPriceFilter && sell <= maxPriceFilter;
+                            })
+                            .collect(Collectors.toList());
+                }
                 vms = products.stream().map(p -> {
                     String middle = "";
                     if (p.getCategory() != null) {
@@ -404,6 +449,52 @@ public class CategoryPanel extends JPanel {
 
         categoryList.revalidate();
         categoryList.repaint();
+    }
+
+    private void initializePriceFilter() {
+        if (priceSlider == null || priceRangeLabel == null) {
+            return;
+        }
+
+        List<Supply> supplies = inv.listAllSupply();
+        if (supplies.isEmpty()) {
+            priceDataAvailable = false;
+            priceSlider.setRange(0, 0);
+            priceSlider.setEnabled(false);
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        priceDataAvailable = true;
+        int min = supplies.stream().mapToInt(Supply::getSellPrice).min().orElse(0);
+        int max = supplies.stream().mapToInt(Supply::getSellPrice).max().orElse(min);
+        priceSlider.setRange(min, max);
+        priceSlider.setEnabled(min != max);
+        updatePriceRangeLabel();
+
+        if (priceSlider.getChangeListeners().length == 0) {
+            priceSlider.addChangeListener(e -> {
+                updatePriceRangeLabel();
+                if (!priceSlider.getValueIsAdjusting()) {
+                    loadCardsAsync(textField.getText(), activeCategoryKey);
+                }
+            });
+        }
+    }
+
+    private void updatePriceRangeLabel() {
+        if (!priceDataAvailable) {
+            priceRangeLabel.setText("Nincs ár adat");
+            return;
+        }
+
+        int lower = priceSlider.getValue();
+        int upper = priceSlider.getUpperValue();
+        if (!priceSlider.isEnabled() || lower == upper) {
+            priceRangeLabel.setText(formatFt(lower));
+        } else {
+            priceRangeLabel.setText(formatFt(lower) + " - " + formatFt(upper));
+        }
     }
 
 
