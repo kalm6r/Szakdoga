@@ -22,6 +22,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.SwingWorker;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.JOptionPane;
+import javax.swing.JToggleButton;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -41,11 +42,14 @@ import service.InventoryService;
 
 import util.UrlImageLoader;
 import java.awt.Image;
+import java.awt.Insets;
 
 public class ManufacturerPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private JTextField textField;
+    private JToggleButton favoriteFilterButton;
+    private boolean favoritesOnly = false;
     
     private static final class CardVM {
         final int productId;
@@ -107,6 +111,21 @@ public class ManufacturerPanel extends JPanel {
         add(panel_3);
         panel_3.setLayout(null);
 
+        favoriteFilterButton = new JToggleButton("☆");
+        favoriteFilterButton.setFocusPainted(false);
+        favoriteFilterButton.setBorderPainted(false);
+        favoriteFilterButton.setContentAreaFilled(false);
+        favoriteFilterButton.setOpaque(false);
+        favoriteFilterButton.setMargin(new Insets(0, 0, 0, 0));
+        favoriteFilterButton.setFont(favoriteFilterButton.getFont().deriveFont(Font.PLAIN, 20f));
+        favoriteFilterButton.setBounds(432, 7, 30, 30);
+        favoriteFilterButton.addActionListener(e -> {
+            favoritesOnly = favoriteFilterButton.isSelected();
+            loadCardsByManufacturerAsync(textField.getText(), activeManufacturerKey);
+        });
+        favoriteFilterButton.addChangeListener(e -> updateFavoriteFilterIcon());
+        panel_3.add(favoriteFilterButton);
+
         JButton btnNewButton_5 = new JButton("");
         btnNewButton_5.setContentAreaFilled(false);
         btnNewButton_5.setBorderPainted(false);
@@ -119,6 +138,17 @@ public class ManufacturerPanel extends JPanel {
         textField.setBounds(472, 11, 315, 27);
         panel_3.add(textField);
         textField.setColumns(10);
+
+        boolean loggedIn = userId != null;
+        favoriteFilterButton.setEnabled(loggedIn);
+        if (!loggedIn) {
+            favoriteFilterButton.setToolTipText("Bejelentkezéssel szűrhetsz a kedvencekre");
+            favoriteFilterButton.setSelected(false);
+            favoritesOnly = false;
+        } else {
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
+        updateFavoriteFilterIcon();
 
         JLabel lblNewLabel = new JLabel("Gyártó szerint");
         lblNewLabel.setBounds(0, 0, 171, 36);
@@ -198,6 +228,7 @@ public class ManufacturerPanel extends JPanel {
     // ------------------ SEGÉD: Kártyák betöltése háttérszálon ------------------
     // FŐ metódus: név + gyártó szerinti szűrés
     private void loadCardsByManufacturerAsync(String search, String manufacturerNameKey) {
+        final boolean filterFavorites = favoritesOnly;
         new SwingWorker<java.util.List<CardVM>, Void>() {
             @Override protected java.util.List<CardVM> doInBackground() {
                 // 1) Alap: összes termék
@@ -222,6 +253,16 @@ public class ManufacturerPanel extends JPanel {
                             .collect(Collectors.toList());
                 }
 
+                final Set<Integer> favoriteIds = favoritesManager != null
+                        ? favoritesManager.getFavoritesSnapshot()
+                        : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
+
+                if (filterFavorites) {
+                    products = products.stream()
+                            .filter(p -> favoriteIds.contains(p.getId()))
+                            .collect(Collectors.toList());
+                }
+
                 // 4) Legutóbbi supply termékenként (árhoz)
                 java.util.Map<Integer, Supply> latestSupplyByProductId = inv.listAllSupply().stream()
                         .collect(Collectors.toMap(
@@ -229,10 +270,6 @@ public class ManufacturerPanel extends JPanel {
                                 Function.identity(),
                                 (a, b) -> a.getBought().isAfter(b.getBought()) ? a : b
                         ));
-
-                Set<Integer> favoriteIds = favoritesManager != null
-                        ? favoritesManager.getFavoritesSnapshot()
-                        : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
 
                 // 5) VM-ek összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
@@ -401,6 +438,26 @@ public class ManufacturerPanel extends JPanel {
         btn.setOpaque(true);
         btn.setBackground(new Color(230,230,230));
         btn.setForeground(Color.BLACK);
+    }
+
+    private void updateFavoriteFilterIcon() {
+        if (favoriteFilterButton == null) {
+            return;
+        }
+        if (!favoriteFilterButton.isEnabled()) {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0xCCCCCC));
+            return;
+        }
+        if (favoriteFilterButton.isSelected()) {
+            favoriteFilterButton.setText("★");
+            favoriteFilterButton.setForeground(new Color(0xE0A000));
+            favoriteFilterButton.setToolTipText("Csak a kedvencek mutatása");
+        } else {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0x999999));
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
     }
 
     private String formatFt(int value) {

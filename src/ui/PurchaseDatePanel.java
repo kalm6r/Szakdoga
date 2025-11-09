@@ -22,6 +22,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.SwingWorker;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.JOptionPane;
+import javax.swing.JToggleButton;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -45,6 +46,7 @@ import service.InventoryService;
 
 import util.UrlImageLoader;
 import java.awt.Image;
+import java.awt.Insets;
 
 public class PurchaseDatePanel extends JPanel {
 
@@ -73,6 +75,8 @@ public class PurchaseDatePanel extends JPanel {
 	
     private static final long serialVersionUID = 1L;
     private JTextField textField;
+    private JToggleButton favoriteFilterButton;
+    private boolean favoritesOnly = false;
 
     // --- Kártyák + görgetés ---
     private JPanel cards;
@@ -116,6 +120,21 @@ public class PurchaseDatePanel extends JPanel {
         add(panel_3);
         panel_3.setLayout(null);
 
+        favoriteFilterButton = new JToggleButton("☆");
+        favoriteFilterButton.setFocusPainted(false);
+        favoriteFilterButton.setBorderPainted(false);
+        favoriteFilterButton.setContentAreaFilled(false);
+        favoriteFilterButton.setOpaque(false);
+        favoriteFilterButton.setMargin(new Insets(0, 0, 0, 0));
+        favoriteFilterButton.setFont(favoriteFilterButton.getFont().deriveFont(Font.PLAIN, 20f));
+        favoriteFilterButton.setBounds(432, 7, 30, 30);
+        favoriteFilterButton.addActionListener(e -> {
+            favoritesOnly = favoriteFilterButton.isSelected();
+            loadCardsByPurchaseDateAsync(textField.getText(), activeYear, activeMonth);
+        });
+        favoriteFilterButton.addChangeListener(e -> updateFavoriteFilterIcon());
+        panel_3.add(favoriteFilterButton);
+
         JButton btnSearch = new JButton("");
         btnSearch.setContentAreaFilled(false);
         btnSearch.setBorderPainted(false);
@@ -128,6 +147,17 @@ public class PurchaseDatePanel extends JPanel {
         textField.setBounds(472, 11, 315, 27);
         panel_3.add(textField);
         textField.setColumns(10);
+
+        boolean loggedIn = userId != null;
+        favoriteFilterButton.setEnabled(loggedIn);
+        if (!loggedIn) {
+            favoriteFilterButton.setToolTipText("Bejelentkezéssel szűrhetsz a kedvencekre");
+            favoriteFilterButton.setSelected(false);
+            favoritesOnly = false;
+        } else {
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
+        updateFavoriteFilterIcon();
 
         JLabel lblNewLabel = new JLabel("Vásárlás dátuma szerint");
         lblNewLabel.setBounds(0, 0, 300, 36);
@@ -344,8 +374,29 @@ public class PurchaseDatePanel extends JPanel {
         btn.setForeground(Color.BLACK);
     }
 
+    private void updateFavoriteFilterIcon() {
+        if (favoriteFilterButton == null) {
+            return;
+        }
+        if (!favoriteFilterButton.isEnabled()) {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0xCCCCCC));
+            return;
+        }
+        if (favoriteFilterButton.isSelected()) {
+            favoriteFilterButton.setText("★");
+            favoriteFilterButton.setForeground(new Color(0xE0A000));
+            favoriteFilterButton.setToolTipText("Csak a kedvencek mutatása");
+        } else {
+            favoriteFilterButton.setText("☆");
+            favoriteFilterButton.setForeground(new Color(0x999999));
+            favoriteFilterButton.setToolTipText("Kedvencek mutatása");
+        }
+    }
+
     // ------------------ Kártyák betöltése háttérszálon (év/hónap szűréssel) ------------------
     private void loadCardsByPurchaseDateAsync(String search, Integer yearFilter, Integer monthFilter) {
+        final boolean filterFavorites = favoritesOnly;
         new SwingWorker<java.util.List<CardVM>, Void>() {
             @Override protected java.util.List<CardVM> doInBackground() {
                 // 1) Összes termék
@@ -381,9 +432,15 @@ public class PurchaseDatePanel extends JPanel {
                         .collect(Collectors.toList());
                 }
 
-                Set<Integer> favoriteIds = favoritesManager != null
+                final Set<Integer> favoriteIds = favoritesManager != null
                         ? favoritesManager.getFavoritesSnapshot()
                         : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
+
+                if (filterFavorites) {
+                    products = products.stream()
+                            .filter(p -> favoriteIds.contains(p.getId()))
+                            .collect(Collectors.toList());
+                }
 
                 // 5) ViewModel összeállítása HÁTTÉRSZÁLON (itt töltjük le a képet is!)
                 java.util.List<CardVM> vms = products.stream().map(p -> {
