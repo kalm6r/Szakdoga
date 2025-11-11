@@ -33,41 +33,65 @@ public class MainFrame extends JFrame {
 
         JPanel panel_1 = new JPanel();
         panel_1.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
-        panel_1.setBounds(0, 155, 50, 194);
+        panel_1.setBounds(0, 136, 50, 220);
         panel.add(panel_1);
 
         JButton btnCategory = new JButton("");
         btnCategory.setBorderPainted(false);
+        btnCategory.setContentAreaFilled(false);
+        btnCategory.setFocusPainted(true);
         btnCategory.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\category.png"));
         btnCategory.setBounds(10, 7, 30, 30);
         panel_1.add(btnCategory);
         btnCategory.setPreferredSize(new Dimension(30, 30));
+        btnCategory.setFont(btnCategory.getFont().deriveFont(Font.PLAIN, 18f));
         
         JButton btnBrand = new JButton("");
         panel_1.add(btnBrand);
         btnBrand.setBorderPainted(false);
+        btnBrand.setContentAreaFilled(false);
+        btnBrand.setFocusPainted(true);
         btnBrand.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\brand.png"));
         btnBrand.setPreferredSize(new Dimension(30, 30));
-                
+        btnBrand.setFont(btnBrand.getFont().deriveFont(Font.PLAIN, 18f));
+        
         JButton btnTime = new JButton("");
         panel_1.add(btnTime);
         btnTime.setBorderPainted(false);
+        btnTime.setContentAreaFilled(false);
+        btnTime.setFocusPainted(true);
         btnTime.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\time.png"));
         btnTime.setPreferredSize(new Dimension(30, 30));
+        btnTime.setFont(btnTime.getFont().deriveFont(Font.PLAIN, 18f));
         
         JButton btnStat = new JButton("");
         panel_1.add(btnStat);
         btnStat.setBorderPainted(false);
+        btnStat.setContentAreaFilled(false);
+        btnStat.setFocusPainted(true);
         btnStat.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\stat.png"));
         btnStat.setPreferredSize(new Dimension(30, 30));
+        btnStat.setFont(btnStat.getFont().deriveFont(Font.PLAIN, 18f));
                         
         JButton btnTop = new JButton("");
+        btnTop.setBackground(new Color(255, 255, 255));
         panel_1.add(btnTop);
         btnTop.setBorderPainted(false);
+        btnTop.setContentAreaFilled(false);
+        btnTop.setFocusPainted(true);
         btnTop.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\top.png"));
         btnTop.setPreferredSize(new Dimension(30, 30));
+        btnTop.setFont(btnTop.getFont().deriveFont(Font.PLAIN, 18f));
         
-
+        JButton btnManage = new JButton("");
+        btnManage.setForeground(new Color(0, 0, 0));
+        panel_1.add(btnManage);
+        btnManage.setBorderPainted(false);
+        btnManage.setContentAreaFilled(false);
+        btnManage.setFocusPainted(true);
+        btnManage.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\new.png"));
+        btnManage.setPreferredSize(new Dimension(30, 30));
+        btnManage.setFont(btnManage.getFont().deriveFont(Font.PLAIN, 18f));
 
         // --- KÖZÉPSŐ TARTALOM ---
         root.add(content, BorderLayout.CENTER);
@@ -92,6 +116,9 @@ public class MainFrame extends JFrame {
         
         TopProductsPanel topProductsPanel = new TopProductsPanel();
         content.add(topProductsPanel, "top");
+        
+        ProductManagementPanel productManagementPanel = new ProductManagementPanel(userId);
+        content.add(productManagementPanel, "manage");
 
 
         // Kezdő nézet:
@@ -107,6 +134,7 @@ public class MainFrame extends JFrame {
         btnTime.addActionListener(e -> cardLayout.show(content, "time"));
         btnStat.addActionListener(e -> cardLayout.show(content, "stat"));
         btnTop.addActionListener(e -> cardLayout.show(content, "top"));
+        btnManage.addActionListener(e -> cardLayout.show(content, "manage"));
     }
 
     private JPanel centerLabel(String text) {

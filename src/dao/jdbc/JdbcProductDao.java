@@ -30,7 +30,8 @@ public class JdbcProductDao implements ProductDao {
                 rs.getString("productname"),
                 rs.getInt("user_id"),
                 cat,
-                rs.getString("image_url")
+                rs.getString("image_url"),
+                rs.getInt("product_subcat_id")
         );
 
         return p;
@@ -38,13 +39,13 @@ public class JdbcProductDao implements ProductDao {
 
     @Override public Optional<Product> findById(int id) {
         String sql = """
-            SELECT p.product_id, p.productname, p.user_id, p.image_url,
+            SELECT p.product_id, p.productname, p.user_id, p.image_url, p.subcat_id AS product_subcat_id,
                    c.category_id, c.categoryname,
                    sC.subcat_id, sC.subcatname,
                    m.manufacturer_id, m.manufacturer_name, m.model_name
             FROM product p
             JOIN category c     ON c.category_id = p.category_id
-            JOIN subcategory sC ON sC.subcat_id = c.subcat_id
+            JOIN subcategory sC ON sC.subcat_id = p.subcat_id
             JOIN manufacturer m ON m.manufacturer_id = sC.manufacturer_id
             WHERE p.product_id = ?
         """;
@@ -60,15 +61,16 @@ public class JdbcProductDao implements ProductDao {
 
     @Override public List<Product> findAll() {
         String sql = """
-            SELECT p.product_id, p.productname, p.user_id, p.image_url,
-                   c.category_id, c.categoryname,
-                   sC.subcat_id, sC.subcatname,
-                   m.manufacturer_id, m.manufacturer_name, m.model_name
-            FROM product p
-            JOIN category c     ON c.category_id = p.category_id
-            JOIN subcategory sC ON sC.subcat_id = c.subcat_id
-            JOIN manufacturer m ON m.manufacturer_id = sC.manufacturer_id
-            ORDER BY p.product_id
+            SELECT p.product_id, p.productname, p.user_id, p.image_url, p.subcat_id AS product_subcat_id,
+        	 		c.category_id, c.categoryname,
+        	 		sC.subcat_id, sC.subcatname,
+        			m.manufacturer_id, m.manufacturer_name, m.model_name
+        	FROM product p
+        	JOIN category    c  ON c.category_id   = p.category_id
+        	JOIN subcategory sC ON sC.subcat_id = p.subcat_id
+        	JOIN manufacturer m ON m.manufacturer_id = sC.manufacturer_id
+        	ORDER BY p.product_id
+
         """;
         List<Product> list = new ArrayList<>();
         try (Connection con = DBUtil.getConnection();
@@ -81,13 +83,13 @@ public class JdbcProductDao implements ProductDao {
 
     @Override public List<Product> findByCategory(int categoryId) {
         String sql = """
-            SELECT p.product_id, p.productname, p.user_id, p.image_url,
+            SELECT p.product_id, p.productname, p.user_id, p.image_url, p.subcat_id AS product_subcat_id,
                    c.category_id, c.categoryname,
                    sC.subcat_id, sC.subcatname,
                    m.manufacturer_id, m.manufacturer_name, m.model_name
             FROM product p
             JOIN category c     ON c.category_id = p.category_id
-            JOIN subcategory sC ON sC.subcat_id = c.subcat_id
+            JOIN subcategory sC ON sC.subcat_id = p.subcat_id
             JOIN manufacturer m ON m.manufacturer_id = sC.manufacturer_id
             WHERE c.category_id = ?
             ORDER BY p.productname
@@ -104,28 +106,30 @@ public class JdbcProductDao implements ProductDao {
     }
 
     @Override public int create(Product p) {
-        String sql = "INSERT INTO product(product_id, user_id, category_id, productname, image_url) VALUES(?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO product(product_id, user_id, category_id, subcat_id, productname, image_url) VALUES(?, ?, ?, ?, ?, ?)";
         try (Connection con = DBUtil.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, p.getId());
             ps.setInt(2, p.getUserId());
             ps.setInt(3, p.getCategory().getId());
-            ps.setString(4, p.getName());
-            ps.setString(5, p.getImageUrl());
+            ps.setInt(4, p.getSubcatId());
+            ps.setString(5, p.getName());
+            ps.setString(6, p.getImageUrl());
             return ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
         return 0;
     }
 
     @Override public boolean update(Product p) {
-        String sql = "UPDATE product SET user_id=?, category_id=?, productname=?, image_url=? WHERE product_id=?";
+        String sql = "UPDATE product SET category_id=?, subcat_id=?, productname=?, image_url=? WHERE product_id=? AND user_id=?";
         try (Connection con = DBUtil.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, p.getUserId());
-            ps.setInt(2, p.getCategory().getId());
+            ps.setInt(1, p.getCategory().getId());
+            ps.setInt(2, p.getSubcatId());
             ps.setString(3, p.getName());
             ps.setString(4, p.getImageUrl());
             ps.setInt(5, p.getId());
+            ps.setInt(6, p.getUserId());
             return ps.executeUpdate() == 1;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;

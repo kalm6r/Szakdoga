@@ -1,16 +1,22 @@
 package service;
 
+import dao.CategoryDao;
 import dao.FavoriteDao;
 import dao.ProductDao;
 import dao.ReportDao;
 import dao.SupplyDao;
+import dao.SubcategoryDao;
+import dao.jdbc.JdbcCategoryDao;
+import dao.jdbc.JdbcFavoriteDao;
 import dao.jdbc.JdbcProductDao;
 import dao.jdbc.JdbcReportDao;
 import dao.jdbc.JdbcSupplyDao;
-import dao.jdbc.JdbcFavoriteDao;
+import dao.jdbc.JdbcSubcategoryDao;
 import dto.TopProduct;
+import dto.CategoryOption;
 import model.Product;
 import model.Supply;
+import model.Subcategory;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +26,8 @@ public class InventoryService {
     private final SupplyDao supplyDao     = new JdbcSupplyDao();
     private final ReportDao reportDao     = new JdbcReportDao();
     private final FavoriteDao favoriteDao = new JdbcFavoriteDao();
+    private final CategoryDao categoryDao = new JdbcCategoryDao();
+    private final SubcategoryDao subcategoryDao = new JdbcSubcategoryDao();
 
     // Product műveletek
     public List<Product> listAllProducts() {
@@ -44,6 +52,21 @@ public class InventoryService {
 
     public boolean deleteProduct(int productId) {
         return productDao.delete(productId);
+    }
+    
+    public List<CategoryOption> listAllCategories() {
+        return categoryDao.listOptions();
+    }
+    public List<Subcategory> findSubcategoriesByName(String name) {
+        return subcategoryDao.findByName(name);
+    }
+
+    public Optional<Subcategory> findSubcategoryByNameAndManufacturer(String name, String manufacturerName) {
+        return subcategoryDao.findByNameAndManufacturer(name, manufacturerName);
+    }
+
+    public Optional<Subcategory> createSubcategory(String name, String manufacturerName) {
+        return subcategoryDao.create(name, manufacturerName);
     }
 
     // Supply műveletek

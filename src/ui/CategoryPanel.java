@@ -278,15 +278,14 @@ public class CategoryPanel extends JPanel {
         final int maxPriceFilter = priceAvailable ? slider.getUpperValue() : Integer.MAX_VALUE;
         final boolean priceFilterActive = priceAvailable && slider.isEnabled()
                 && (minPriceFilter > sliderMin || maxPriceFilter < sliderMax);
-        new SwingWorker<Void, Void>() {
+        new SwingWorker<List<CardVM>, Void>() {
             List<Product> products;
             Map<Integer, Supply> latestSupplyByProductId;
-            List<CardVM> vms;
             Set<Integer> favoriteIds = favoritesManager != null
                     ? favoritesManager.getFavoritesSnapshot()
                     : (userId != null ? inv.listFavoriteProductIds(userId) : Set.of());
 
-            @Override protected Void doInBackground() {
+            @Override protected List<CardVM> doInBackground() {
                 // Alap: összes termék
                 products = inv.listAllProducts();
 
@@ -332,7 +331,7 @@ public class CategoryPanel extends JPanel {
                             })
                             .collect(Collectors.toList());
                 }
-                vms = products.stream().map(p -> {
+                List<CardVM> vms = products.stream().map(p -> {
                     String middle = "";
                     if (p.getCategory() != null) {
                         if (p.getCategory().getSubcategory() != null && p.getCategory().getSubcategory().getName() != null) {
@@ -360,18 +359,21 @@ public class CategoryPanel extends JPanel {
                     int pxH = (int)Math.round(ProductCard.IMG_H * scale);
                     
                     Image hi =  UrlImageLoader.get(p.getImageUrl(), pxW, pxH);
-                    Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
+                    Image img = hi != null
+                            ? hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH)
+                            : null;
 
 
                     boolean favorite = favoriteIds.contains(p.getId());
                     return new CardVM(p.getId(), p.getName(), middle, purchasePrice, purchaseDate, sellPrice, img, favorite);
                 }).collect(Collectors.toList());
 
-                return null;
+                return vms;
             }
 
             @Override protected void done() {
                 try {
+                    List<CardVM> vms = get();
                     cards.removeAll();
                     for (CardVM vm : vms) {      // <-- NEM 'products'-ból dolgozunk, hanem a vms-ből
                         ProductCard card = new ProductCard();

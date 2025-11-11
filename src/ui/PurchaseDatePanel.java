@@ -570,7 +570,9 @@ public class PurchaseDatePanel extends JPanel {
                     int pxH = (int)Math.round(ProductCard.IMG_H * scale);
                     
                     Image hi =  UrlImageLoader.get(p.getImageUrl(), pxW, pxH);
-                    Image img = hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH);
+                    Image img = hi != null
+                            ? hi.getScaledInstance(ProductCard.IMG_W, ProductCard.IMG_H, Image.SCALE_SMOOTH)
+                            : null;
 
 
                     boolean favorite = favoriteIds.contains(p.getId());
