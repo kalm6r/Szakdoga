@@ -183,10 +183,12 @@ public class PurchaseDatePanel extends JPanel {
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         dateScroll.setBorder(null);
+        ModernUIComponents.applyModernScrollbarStyle(dateScroll);
         panel_1.add(dateScroll, BorderLayout.CENTER);
 
         // --- Kártyák + görgetés (3 oszlop) ---
         cards = new JPanel(new GridLayout(0, 3, 16, 16));
+        cards.setBackground(new Color(248, 249, 250));
         cards.setBorder(new EmptyBorder(16, 16, 16, 16));
         
         final int cardsX = 310;
@@ -202,6 +204,8 @@ public class PurchaseDatePanel extends JPanel {
         cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
         cardsScroll.setBounds(cardsX, cardsY, cardsWidth, cardsHeight);
         cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        cardsScroll.getViewport().setBackground(new Color(248, 249, 250));
+        ModernUIComponents.applyModernScrollbarStyle(cardsScroll);
         cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
 
         add(cardsScroll);

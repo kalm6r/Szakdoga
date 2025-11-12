@@ -17,6 +17,7 @@ import dto.CategoryOption;
 import model.Product;
 import model.Supply;
 import model.Subcategory;
+import java.util.Optional;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,27 @@ public class InventoryService {
     private final FavoriteDao favoriteDao = new JdbcFavoriteDao();
     private final CategoryDao categoryDao = new JdbcCategoryDao();
     private final SubcategoryDao subcategoryDao = new JdbcSubcategoryDao();
+    
+ // Kategória CRUD műveletek
+    public Optional<CategoryOption> createCategory(String name) {
+        return categoryDao.create(name);
+    }
+    
+    public boolean updateCategory(int categoryId, String newName) {
+        return categoryDao.update(categoryId, newName);
+    }
+    
+    public boolean deleteCategory(int categoryId) {
+        return categoryDao.delete(categoryId);
+    }
+    
+    public Optional<CategoryOption> findCategoryById(int categoryId) {
+        return categoryDao.findById(categoryId);
+    }
+    
+    public Optional<CategoryOption> findCategoryByName(String name) {
+        return categoryDao.findByName(name);
+    }
 
     // Product műveletek
     public List<Product> listAllProducts() {

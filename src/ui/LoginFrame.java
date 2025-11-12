@@ -56,6 +56,7 @@ public class LoginFrame extends JFrame {
 
         txtUsername = new JTextField();
         txtUsername.setBounds(0, 17, 230, 30);
+        ModernUIComponents.applyModernTextFieldStyle(txtUsername);
         txtUsername.setColumns(10);
         userBlock.add(txtUsername);
 
@@ -71,10 +72,11 @@ public class LoginFrame extends JFrame {
 
         txtPassword = new JPasswordField();
         txtPassword.setBounds(0, 18, 230, 30);
+        ModernUIComponents.applyModernTextFieldStyle(txtPassword);
         passBlock.add(txtPassword);
 
         // Gombok / link
-        JButton btnLogin = new JButton("Belépés");
+        JButton btnLogin = ModernUIComponents.createPrimaryButton("Belépés");
         btnLogin.setBounds(89, 175, 100, 28);
         formPanel.add(btnLogin);
 

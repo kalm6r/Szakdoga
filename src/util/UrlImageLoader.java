@@ -19,6 +19,9 @@ public final class UrlImageLoader {
 
     public static Image get(String url, int maxW, int maxH) {
     	// classpath: erőforrás betöltés (pl. classpath:/images/mxmaster3s.jpg)
+        if (url == null || url.isBlank()) {
+            return null;  // Biztonságosan visszatérünk null-lal
+        }
     	if (url.startsWith("classpath:")) {
     	    String res = url.substring("classpath:".length());
     	    if (!res.startsWith("/")) res = "/" + res;

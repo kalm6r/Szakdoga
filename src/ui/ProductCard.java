@@ -22,7 +22,7 @@ import javax.swing.border.LineBorder;
 public class ProductCard extends JPanel {
     public static final int IMG_W = 180;
     public static final int IMG_H = 110;
-
+    
     private final JLabel img = new JLabel();
     private final JTextArea name = new JTextArea("Termék neve");
     private final JLabel middleLabel = new JLabel("<html><div style='width:150px;color:#666'>Rövid leírás…</div></html>");
@@ -36,8 +36,11 @@ public class ProductCard extends JPanel {
 
     public ProductCard() {
         setBackground(Color.WHITE);
-        setBorder(new CompoundBorder(new LineBorder(new Color(0xDDDDDD)), new EmptyBorder(8,8,8,8)));
-        setPreferredSize(new Dimension(170, 320));
+        setBorder(new javax.swing.border.CompoundBorder(
+                new javax.swing.border.LineBorder(new Color(222, 226, 230), 1),
+                new EmptyBorder(8, 8, 8, 8)
+            ));
+            setPreferredSize(new Dimension(170, 320));
 
         setLayout(new BorderLayout(8, 8));
         img.setHorizontalAlignment(SwingConstants.CENTER);

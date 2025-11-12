@@ -173,10 +173,12 @@ public class ManufacturerPanel extends JPanel {
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         mfgScroll.setBorder(null);
+        ModernUIComponents.applyModernScrollbarStyle(mfgScroll);
         panel_1.add(mfgScroll, BorderLayout.CENTER);
 
         // --- KÁRTYÁK + GÖRGETÉS ---
         cards = new JPanel(new GridLayout(0, 3, 16, 16));
+        cards.setBackground(new Color(248, 249, 250));
         cards.setBorder(new EmptyBorder(16, 16, 16, 16));
         
         final int cardsX = 310;
@@ -192,7 +194,9 @@ public class ManufacturerPanel extends JPanel {
         cardsScroll.setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
         cardsScroll.setBounds(cardsX, cardsY, cardsWidth, cardsHeight);
         cardsScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        cardsScroll.getViewport().setBackground(new Color(248, 249, 250));
         cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
+        ModernUIComponents.applyModernScrollbarStyle(cardsScroll);
 
         add(cardsScroll);
         

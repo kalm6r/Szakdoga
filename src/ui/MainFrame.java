@@ -3,6 +3,9 @@ package ui;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
 import dao.UserDao;
 import service.InventoryService;
 
@@ -37,9 +40,18 @@ public class MainFrame extends JFrame {
         panel.add(panel_1);
 
         JButton btnCategory = new JButton("");
-        btnCategory.setBorderPainted(false);
         btnCategory.setContentAreaFilled(false);
-        btnCategory.setFocusPainted(true);
+        btnCategory.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnCategory.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnCategory.setBackground(Color.WHITE);
+            }
+        });
         btnCategory.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\category.png"));
         btnCategory.setBounds(10, 7, 30, 30);
         panel_1.add(btnCategory);
@@ -48,47 +60,90 @@ public class MainFrame extends JFrame {
         
         JButton btnBrand = new JButton("");
         panel_1.add(btnBrand);
-        btnBrand.setBorderPainted(false);
         btnBrand.setContentAreaFilled(false);
-        btnBrand.setFocusPainted(true);
+        btnBrand.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnBrand.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnBrand.setBackground(Color.WHITE);
+            }
+        });
         btnBrand.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\brand.png"));
         btnBrand.setPreferredSize(new Dimension(30, 30));
         btnBrand.setFont(btnBrand.getFont().deriveFont(Font.PLAIN, 18f));
         
         JButton btnTime = new JButton("");
         panel_1.add(btnTime);
-        btnTime.setBorderPainted(false);
         btnTime.setContentAreaFilled(false);
-        btnTime.setFocusPainted(true);
+        btnTime.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnTime.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnTime.setBackground(Color.WHITE);
+            }
+        });
         btnTime.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\time.png"));
         btnTime.setPreferredSize(new Dimension(30, 30));
         btnTime.setFont(btnTime.getFont().deriveFont(Font.PLAIN, 18f));
         
         JButton btnStat = new JButton("");
         panel_1.add(btnStat);
-        btnStat.setBorderPainted(false);
         btnStat.setContentAreaFilled(false);
-        btnStat.setFocusPainted(true);
+        btnStat.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnStat.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnStat.setBackground(Color.WHITE);
+            }
+        });
         btnStat.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\stat.png"));
         btnStat.setPreferredSize(new Dimension(30, 30));
         btnStat.setFont(btnStat.getFont().deriveFont(Font.PLAIN, 18f));
                         
         JButton btnTop = new JButton("");
-        btnTop.setBackground(new Color(255, 255, 255));
         panel_1.add(btnTop);
-        btnTop.setBorderPainted(false);
         btnTop.setContentAreaFilled(false);
-        btnTop.setFocusPainted(true);
+        btnTop.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnTop.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnTop.setBackground(Color.WHITE);
+            }
+        });
         btnTop.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\top.png"));
         btnTop.setPreferredSize(new Dimension(30, 30));
         btnTop.setFont(btnTop.getFont().deriveFont(Font.PLAIN, 18f));
         
         JButton btnManage = new JButton("");
-        btnManage.setForeground(new Color(0, 0, 0));
         panel_1.add(btnManage);
-        btnManage.setBorderPainted(false);
         btnManage.setContentAreaFilled(false);
-        btnManage.setFocusPainted(true);
+        btnManage.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnManage.setBackground(ModernUIComponents.PRIMARY_HOVER);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnManage.setBackground(Color.WHITE);
+            }
+        });
         btnManage.setIcon(new ImageIcon("C:\\Users\\ASUS\\eclipse-workspace\\Szakdolgozat\\src\\resources\\new.png"));
         btnManage.setPreferredSize(new Dimension(30, 30));
         btnManage.setFont(btnManage.getFont().deriveFont(Font.PLAIN, 18f));

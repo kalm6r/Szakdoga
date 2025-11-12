@@ -117,34 +117,46 @@ public class JdbcSubcategoryDao implements SubcategoryDao {
 
         String normalizedManufacturer = trimmedManufacturer.toLowerCase(Locale.ROOT);
 
-        String manufacturerSql = """
-                SELECT manufacturer_id, manufacturer_name, model_name
-                FROM manufacturer
-                WHERE LOWER(TRIM(manufacturer_name)) = ?
-                """;
+        try (Connection con = DBUtil.getConnection()) {
+            // 1. Gyártó keresése/létrehozása
+            String manufacturerSql = """
+                    SELECT manufacturer_id, manufacturer_name, model_name
+                    FROM manufacturer
+                    WHERE LOWER(TRIM(manufacturer_name)) = ?
+                    """;
 
-        try (Connection con = DBUtil.getConnection();
-             PreparedStatement manufacturerPs = con.prepareStatement(manufacturerSql)) {
-            manufacturerPs.setString(1, normalizedManufacturer);
             Manufacturer manufacturer;
-            try (ResultSet rs = manufacturerPs.executeQuery()) {
-                if (!rs.next()) {
-                    return Optional.empty();
+            try (PreparedStatement manufacturerPs = con.prepareStatement(manufacturerSql)) {
+                manufacturerPs.setString(1, normalizedManufacturer);
+                try (ResultSet rs = manufacturerPs.executeQuery()) {
+                    if (rs.next()) {
+                        manufacturer = new Manufacturer(
+                                rs.getInt("manufacturer_id"),
+                                rs.getString("manufacturer_name"),
+                                rs.getString("model_name")
+                        );
+                    } else {
+                        manufacturer = createManufacturer(con, trimmedManufacturer);
+                        if (manufacturer == null) {
+                            return Optional.empty();
+                        }
+                    }
                 }
-                manufacturer = new Manufacturer(
-                        rs.getInt("manufacturer_id"),
-                        rs.getString("manufacturer_name"),
-                        rs.getString("model_name")
-                );
             }
 
+            // 2. CATEGORY_ID meghatározása az alkategória neve alapján
+            int categoryId = determineCategoryIdBySubcategoryName(trimmedName);
+
+            // 3. Új alkategória ID meghatározása
             int newId = determineNextId(con);
 
-            String insertSql = "INSERT INTO subcategory (subcat_id, subcatname, manufacturer_id) VALUES (?, ?, ?)";
+            // 4. Alkategória létrehozása (CATEGORY_ID-val együtt!)
+            String insertSql = "INSERT INTO subcategory (subcat_id, subcatname, manufacturer_id, category_id) VALUES (?, ?, ?, ?)";
             try (PreparedStatement insertPs = con.prepareStatement(insertSql)) {
                 insertPs.setInt(1, newId);
                 insertPs.setString(2, trimmedName);
                 insertPs.setInt(3, manufacturer.getId());
+                insertPs.setInt(4, categoryId);
                 int rows = insertPs.executeUpdate();
                 if (rows == 1) {
                     return Optional.of(new Subcategory(newId, trimmedName, manufacturer));
@@ -155,6 +167,70 @@ public class JdbcSubcategoryDao implements SubcategoryDao {
         }
 
         return Optional.empty();
+    }
+
+    /**
+     * Meghatározza a category_id-t az alkategória neve alapján
+     */
+    private int determineCategoryIdBySubcategoryName(String subcategoryName) {
+        String normalized = subcategoryName.trim().toLowerCase(Locale.ROOT);
+        
+        // Mapping az alkategória név és kategória ID között
+        // Ez ugyanaz a logika, mint a SeedData-ban
+        switch (normalized) {
+            case "egér":
+            case "billentyűzet":
+            case "headset":
+                return 1; // Periféria
+            case "notebook":
+                return 2; // Laptop
+            case "monitor":
+                return 3; // Monitor
+            case "ssd":
+                return 4; // SSD
+            case "videókártya":
+                return 5; // Videókártya
+            case "router":
+                return 6; // Hálózat
+            case "hdd":
+                return 7; // HDD
+            case "memória":
+                return 8; // Memória
+            case "tablet":
+                return 9; // Tablet
+            case "telefon":
+                return 10; // Telefon
+            default:
+                // Ha nem ismerjük fel, akkor alapértelmezetten az első kategóriához rendeljük
+                return 1; // Periféria (default)
+        }
+    }
+
+    private Manufacturer createManufacturer(Connection con, String manufacturerName) throws SQLException {
+        // Új gyártó ID meghatározása
+        int newManufacturerId;
+        String maxIdSql = "SELECT NVL(MAX(manufacturer_id), 0) + 1 AS next_id FROM manufacturer";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(maxIdSql)) {
+            if (rs.next()) {
+                newManufacturerId = rs.getInt("next_id");
+            } else {
+                throw new SQLException("Nem sikerült új gyártó azonosítót képezni.");
+            }
+        }
+
+        // Gyártó létrehozása (model_name null marad)
+        String insertSql = "INSERT INTO manufacturer (manufacturer_id, manufacturer_name, model_name) VALUES (?, ?, NULL)";
+        try (PreparedStatement ps = con.prepareStatement(insertSql)) {
+            ps.setInt(1, newManufacturerId);
+            ps.setString(2, manufacturerName);
+            int rows = ps.executeUpdate();
+            if (rows == 1) {
+                return new Manufacturer(newManufacturerId, manufacturerName, null);
+            }
+        }
+
+        return null;
     }
 
     private int determineNextId(Connection con) throws SQLException {
