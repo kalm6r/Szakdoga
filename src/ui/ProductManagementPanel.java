@@ -543,11 +543,28 @@ public class ProductManagementPanel extends JPanel {
         // Ellenőrizzük, hogy van-e Supply rekord
         boolean hasSupply = inventoryService.findSupplyByProductId(selected.getId()).isPresent();
         
+        // Ellenőrizzük, hogy ez-e az utolsó termék ebben a kategóriában
+        int categoryId = selected.getCategory() != null ? selected.getCategory().getId() : -1;
+        String categoryName = selected.getCategory() != null ? selected.getCategory().getName() : null;
+        boolean isLastInCategory = false;
+        
+        if (categoryId != -1) {
+            long categoryProductCount = inventoryService.listAllProducts().stream()
+                    .filter(p -> p.getCategory() != null && p.getCategory().getId() == categoryId)
+                    .count();
+            isLastInCategory = categoryProductCount == 1;
+        }
+        
         String warningMessage = "Biztosan törlöd a kiválasztott terméket?\n\n" +
                                 selected.getName() + " (ID: " + selected.getId() + ")";
         
         if (hasSupply) {
             warningMessage += "\n\n⚠ A termékhez tartozó készletadatok is törlésre kerülnek!";
+        }
+        
+        if (isLastInCategory && categoryName != null) {
+            warningMessage += "\n\n⚠ Ez az utolsó termék a(z) \"" + categoryName + 
+                            "\" kategóriában, így a kategória is törlésre kerül!";
         }
         
         warningMessage += "\n\nFIGYELEM: Ez a művelet nem vonható vissza!";
@@ -577,8 +594,25 @@ public class ProductManagementPanel extends JPanel {
             
             // Aztán töröljük a terméket
             if (inventoryService.deleteProduct(selected.getId())) {
+                String successMessage = "A termék sikeresen törölve.";
+                
+                // Ha ez volt az utolsó termék a kategóriában, töröljük a kategóriát is
+                if (isLastInCategory && categoryId != -1) {
+                    try {
+                        if (inventoryService.deleteCategory(categoryId)) {
+                            successMessage += "\n\n✓ A(z) \"" + categoryName + "\" kategória is törölve lett.";
+                            // Frissítjük a kategória listát
+                            SwingUtilities.invokeLater(this::loadCategories);
+                        }
+                    } catch (IllegalArgumentException ex) {
+                        // Ha nem sikerült törölni a kategóriát (pl. még van hozzá alkategória),
+                        // akkor csak jelezzük, de ne szakítsuk meg a műveletet
+                        successMessage += "\n\n⚠ A kategória törlése nem sikerült: " + ex.getMessage();
+                    }
+                }
+                
                 JOptionPane.showMessageDialog(this,
-                        "A termék sikeresen törölve.",
+                        successMessage,
                         "Siker",
                         JOptionPane.INFORMATION_MESSAGE);
                 loadProducts(-1);
